@@ -139,9 +139,8 @@ const Index = () => {
           <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
             <Users className="h-5 w-5" /> Түрээслэгч & Санхүү
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard title="Түрээслэгчдийн тоо" value={143} icon={Users} trend="+5 шинэ" />
-            <StatCard title="Санал хүсэлт" value={65} icon={MessageSquare} subtitle="Энэ сард" />
             <StatCard title="Түрээсийн орлого" value="51.0 сая₮" icon={DollarSign} trend="+4.2%" />
             <StatCard title="Менежментийн орлого" value="9.5 сая₮" icon={DollarSign} trend="+3.3%" />
             <StatCard title="Ашиглалтын төлбөр" value="12.2 сая₮" icon={FileText} />
