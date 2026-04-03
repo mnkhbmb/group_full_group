@@ -148,8 +148,8 @@ const Index = () => {
           </div>
         </div>
 
-        {/* Invoice summary */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Invoice summary + Feedback */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Илгээгдсэн нэхэмжлэл</CardTitle>
@@ -170,6 +170,32 @@ const Index = () => {
               <p className="text-xs text-muted-foreground">Нийт дүн: 8.2 сая₮</p>
               <Progress value={11} className="mt-2 h-2" />
               <p className="text-xs text-destructive mt-1">11% төлөгдөөгүй</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                Санал хүсэлт
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">65</div>
+              <p className="text-xs text-muted-foreground">Энэ сард ирсэн</p>
+              <div className="mt-2 space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Засвар үйлчилгээ</span>
+                  <span className="font-medium text-foreground">24</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Зогсоол</span>
+                  <span className="font-medium text-foreground">15</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Цэвэрлэгээ</span>
+                  <span className="font-medium text-foreground">12</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
