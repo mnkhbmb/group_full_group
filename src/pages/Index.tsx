@@ -14,16 +14,12 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,
-  ResponsiveContainer,
   Area,
   AreaChart,
 } from "recharts";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 
 // Mock data
