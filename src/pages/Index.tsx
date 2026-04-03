@@ -139,17 +139,16 @@ const Index = () => {
           <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
             <Users className="h-5 w-5" /> Түрээслэгч & Санхүү
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard title="Түрээслэгчдийн тоо" value={143} icon={Users} trend="+5 шинэ" />
-            <StatCard title="Санал хүсэлт" value={65} icon={MessageSquare} subtitle="Энэ сард" />
             <StatCard title="Түрээсийн орлого" value="51.0 сая₮" icon={DollarSign} trend="+4.2%" />
             <StatCard title="Менежментийн орлого" value="9.5 сая₮" icon={DollarSign} trend="+3.3%" />
             <StatCard title="Ашиглалтын төлбөр" value="12.2 сая₮" icon={FileText} />
           </div>
         </div>
 
-        {/* Invoice summary */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Invoice summary + Feedback */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">Илгээгдсэн нэхэмжлэл</CardTitle>
@@ -170,6 +169,32 @@ const Index = () => {
               <p className="text-xs text-muted-foreground">Нийт дүн: 8.2 сая₮</p>
               <Progress value={11} className="mt-2 h-2" />
               <p className="text-xs text-destructive mt-1">11% төлөгдөөгүй</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                Санал хүсэлт
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">65</div>
+              <p className="text-xs text-muted-foreground">Энэ сард ирсэн</p>
+              <div className="mt-2 space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Засвар үйлчилгээ</span>
+                  <span className="font-medium text-foreground">24</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Зогсоол</span>
+                  <span className="font-medium text-foreground">15</span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">Цэвэрлэгээ</span>
+                  <span className="font-medium text-foreground">12</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
