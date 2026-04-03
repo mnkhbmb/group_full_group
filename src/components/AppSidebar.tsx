@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, Receipt, Wrench, User, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Building2, Receipt, Wrench, User, Settings, LogOut, ChevronUp } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
