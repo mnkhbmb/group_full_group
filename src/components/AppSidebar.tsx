@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, Receipt, Wrench, User, Settings, LogOut, ChevronUp } from "lucide-react";
+import { LayoutDashboard, Building2, Receipt, Wrench, Users, User, Settings, LogOut, ChevronUp } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -27,6 +27,7 @@ import {
 const menuItems = [
   { title: "Хяналтын самбар", url: "/", icon: LayoutDashboard },
   { title: "Хөрөнгө", url: "/property", icon: Building2 },
+  { title: "Түрээслэгч", url: "/tenants", icon: Users },
   { title: "Санхүү бүртгэл", url: "/finance", icon: Receipt },
   { title: "Ашиглалт", url: "/operations", icon: Wrench, comingSoon: true },
 ];
