@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
-import { Users, Plus, Search, X, Pencil } from "lucide-react";
+import { Users, Plus, Search, X, Pencil, Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { propertyData } from "@/data/properties";
 
 interface TenantRecord {
   id: string;
@@ -32,6 +34,7 @@ interface TenantRecord {
   email: string;
   company: string;
   registerNumber: string;
+  propertyIds: string[];
   status: "active" | "inactive";
   createdAt: string;
 }
@@ -46,6 +49,7 @@ const initialData: TenantRecord[] = [
     email: "bat.dorj@mail.mn",
     company: "Бат Дорж ХХК",
     registerNumber: "УБ12345678",
+    propertyIds: ["1"],
     status: "active",
     createdAt: "2024-01-15",
   },
@@ -58,6 +62,7 @@ const initialData: TenantRecord[] = [
     email: "bold.s@mail.mn",
     company: "Болд Трейд ХХК",
     registerNumber: "УБ87654321",
+    propertyIds: ["2", "3"],
     status: "active",
     createdAt: "2024-02-01",
   },
@@ -70,6 +75,7 @@ const initialData: TenantRecord[] = [
     email: "gan.tulga@mail.mn",
     company: "Тулга Групп ХХК",
     registerNumber: "УБ11223344",
+    propertyIds: ["3"],
     status: "active",
     createdAt: "2024-02-20",
   },
@@ -82,6 +88,7 @@ const initialData: TenantRecord[] = [
     email: "nar.m@mail.mn",
     company: "",
     registerNumber: "АА99887766",
+    propertyIds: [],
     status: "inactive",
     createdAt: "2024-03-10",
   },
@@ -94,6 +101,7 @@ const initialData: TenantRecord[] = [
     email: "oyun.e@mail.mn",
     company: "Оюун Эрдэнэ ХХК",
     registerNumber: "УБ55667788",
+    propertyIds: ["5"],
     status: "active",
     createdAt: "2024-03-25",
   },
@@ -115,6 +123,7 @@ const Tenants = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState(emptyForm);
+  const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
   const { toast } = useToast();
 
   const filtered = useMemo(() => {
@@ -132,9 +141,23 @@ const Tenants = () => {
     );
   }, [search, records]);
 
+  const toggleProperty = (propertyId: string) => {
+    setSelectedPropertyIds((prev) =>
+      prev.includes(propertyId)
+        ? prev.filter((id) => id !== propertyId)
+        : [...prev, propertyId]
+    );
+  };
+
+  const getPropertyLabel = (id: string) => {
+    const p = propertyData.find((pr) => pr.id === id);
+    return p ? `${p.objectName} / ${p.areaId} (${p.floor}-р давхар)` : id;
+  };
+
   const openCreate = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setSelectedPropertyIds([]);
     setDialogOpen(true);
   };
 
@@ -149,6 +172,7 @@ const Tenants = () => {
       company: r.company,
       registerNumber: r.registerNumber,
     });
+    setSelectedPropertyIds(r.propertyIds);
     setDialogOpen(true);
   };
 
@@ -162,7 +186,7 @@ const Tenants = () => {
       setRecords((prev) =>
         prev.map((r) =>
           r.id === editingId
-            ? { ...r, ...form }
+            ? { ...r, ...form, propertyIds: selectedPropertyIds }
             : r
         )
       );
@@ -171,6 +195,7 @@ const Tenants = () => {
       const newRecord: TenantRecord = {
         id: Date.now().toString(),
         ...form,
+        propertyIds: selectedPropertyIds,
         status: "active",
         createdAt: new Date().toISOString().split("T")[0],
       };
@@ -179,6 +204,7 @@ const Tenants = () => {
     }
 
     setForm(emptyForm);
+    setSelectedPropertyIds([]);
     setEditingId(null);
     setDialogOpen(false);
   };
@@ -229,7 +255,7 @@ const Tenants = () => {
                   <TableHead>Утас</TableHead>
                   <TableHead className="hidden md:table-cell">И-мэйл</TableHead>
                   <TableHead className="hidden lg:table-cell">Компани</TableHead>
-                  <TableHead className="hidden lg:table-cell">Регистрийн дугаар</TableHead>
+                  <TableHead className="hidden md:table-cell">Хөрөнгө</TableHead>
                   <TableHead>Төлөв</TableHead>
                   <TableHead className="text-right">Үйлдэл</TableHead>
                 </TableRow>
@@ -251,7 +277,23 @@ const Tenants = () => {
                       <TableCell>{r.phone}</TableCell>
                       <TableCell className="hidden md:table-cell">{r.email}</TableCell>
                       <TableCell className="hidden lg:table-cell">{r.company || "—"}</TableCell>
-                      <TableCell className="hidden lg:table-cell">{r.registerNumber}</TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <div className="flex flex-wrap gap-1">
+                          {r.propertyIds.length === 0 ? (
+                            <span className="text-muted-foreground text-xs">—</span>
+                          ) : (
+                            r.propertyIds.map((pid) => {
+                              const p = propertyData.find((pr) => pr.id === pid);
+                              return (
+                                <Badge key={pid} variant="secondary" className="text-xs">
+                                  <Building2 className="h-3 w-3 mr-1" />
+                                  {p ? p.areaId : pid}
+                                </Badge>
+                              );
+                            })
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <Badge variant={r.status === "active" ? "default" : "secondary"}>
                           {r.status === "active" ? "Идэвхтэй" : "Идэвхгүй"}
@@ -307,6 +349,39 @@ const Tenants = () => {
               <Input placeholder="УБ12345678" value={form.registerNumber} onChange={(e) => updateField("registerNumber", e.target.value)} />
             </div>
           </div>
+
+          {/* Property multi-select */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Хөрөнгө сонгох (олон сонголт)</Label>
+            <div className="border rounded-md max-h-48 overflow-y-auto">
+              {propertyData.map((p) => (
+                <label
+                  key={p.id}
+                  className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer border-b last:border-b-0"
+                >
+                  <Checkbox
+                    checked={selectedPropertyIds.includes(p.id)}
+                    onCheckedChange={() => toggleProperty(p.id)}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{p.objectName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {p.areaId} · {p.floor}-р давхар · {p.areaSize} м²
+                    </p>
+                  </div>
+                  <Badge variant={p.status === "rented" ? "default" : "secondary"} className="text-xs shrink-0">
+                    {p.status === "rented" ? "Түрээслэсэн" : "Сул"}
+                  </Badge>
+                </label>
+              ))}
+            </div>
+            {selectedPropertyIds.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {selectedPropertyIds.length} хөрөнгө сонгогдсон
+              </p>
+            )}
+          </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Болих</Button>
             <Button onClick={handleSubmit}>{editingId ? "Хадгалах" : "Бүртгэх"}</Button>
