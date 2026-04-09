@@ -141,6 +141,59 @@ const Finance = () => {
 
       {/* Collapsible sections */}
       <div className="space-y-4">
+        {/* Sent Invoices */}
+        <Collapsible open={invoicesOpen} onOpenChange={setInvoicesOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Илгээгдсэн нэхэмжлэлүүд
+                    <Badge variant="outline" className="text-xs">{sentInvoices.length}</Badge>
+                  </CardTitle>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    {invoicesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Дугаар</TableHead>
+                      <TableHead>Түрээслэгч</TableHead>
+                      <TableHead className="text-right">Дүн</TableHead>
+                      <TableHead className="hidden sm:table-cell">Огноо</TableHead>
+                      <TableHead className="text-right">Төлөв</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sentInvoices.map((inv) => (
+                      <TableRow key={inv.id + inv.date}>
+                        <TableCell><Badge variant="outline" className="font-mono text-xs">{inv.id}</Badge></TableCell>
+                        <TableCell className="font-medium">{inv.tenant}</TableCell>
+                        <TableCell className="text-right">{formatMNT(inv.amount)}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-muted-foreground">{inv.date}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge
+                            variant={inv.status === "paid" ? "default" : inv.status === "overdue" ? "destructive" : "secondary"}
+                            className="text-xs"
+                          >
+                            {inv.status === "paid" ? "Төлөгдсөн" : inv.status === "overdue" ? "Хугацаа хэтэрсэн" : "Төлөгдөөгүй"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
         {/* Overdue */}
         <Collapsible open={overdueOpen} onOpenChange={setOverdueOpen}>
           <Card>
