@@ -122,9 +122,21 @@ const Tenants = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [propertySearch, setPropertySearch] = useState("");
   const [form, setForm] = useState(emptyForm);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
   const { toast } = useToast();
+
+  const filteredProperties = useMemo(() => {
+    if (!propertySearch.trim()) return propertyData;
+    const q = propertySearch.toLowerCase();
+    return propertyData.filter(
+      (p) =>
+        p.objectName.toLowerCase().includes(q) ||
+        p.areaId.toLowerCase().includes(q) ||
+        p.floor.includes(q)
+    );
+  }, [propertySearch]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return records;
@@ -353,27 +365,40 @@ const Tenants = () => {
           {/* Property multi-select */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">Хөрөнгө сонгох (олон сонголт)</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Хөрөнгө хайх... (нэр, дугаар, давхар)"
+                value={propertySearch}
+                onChange={(e) => setPropertySearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
             <div className="border rounded-md max-h-48 overflow-y-auto">
-              {propertyData.map((p) => (
-                <label
-                  key={p.id}
-                  className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer border-b last:border-b-0"
-                >
-                  <Checkbox
-                    checked={selectedPropertyIds.includes(p.id)}
-                    onCheckedChange={() => toggleProperty(p.id)}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{p.objectName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {p.areaId} · {p.floor}-р давхар · {p.areaSize} м²
-                    </p>
-                  </div>
-                  <Badge variant={p.status === "rented" ? "default" : "secondary"} className="text-xs shrink-0">
-                    {p.status === "rented" ? "Түрээслэсэн" : "Сул"}
-                  </Badge>
-                </label>
-              ))}
+              {filteredProperties.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">Илэрц олдсонгүй</p>
+              ) : (
+                filteredProperties.map((p) => (
+                  <label
+                    key={p.id}
+                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer border-b last:border-b-0"
+                  >
+                    <Checkbox
+                      checked={selectedPropertyIds.includes(p.id)}
+                      onCheckedChange={() => toggleProperty(p.id)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{p.objectName}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {p.areaId} · {p.floor}-р давхар · {p.areaSize} м²
+                      </p>
+                    </div>
+                    <Badge variant={p.status === "rented" ? "default" : "secondary"} className="text-xs shrink-0">
+                      {p.status === "rented" ? "Түрээслэсэн" : "Сул"}
+                    </Badge>
+                  </label>
+                ))
+              )}
             </div>
             {selectedPropertyIds.length > 0 && (
               <p className="text-xs text-muted-foreground">

@@ -48,6 +48,24 @@ const kpiData: MiniStat[] = [
   { title: "Өглөгийн бүртгэл", value: "3.8 сая₮", subtitle: "5 нийлүүлэгч", icon: TrendingDown, color: "text-orange-500" },
 ];
 
+const sentInvoices = [
+  { id: "INV-0081", tenant: "Бат Дорж", amount: 2550000, date: "2024-04-01", status: "paid" as const },
+  { id: "INV-0082", tenant: "Болд Сүхбат", amount: 4200000, date: "2024-04-01", status: "paid" as const },
+  { id: "INV-0083", tenant: "Ган Тулга", amount: 7000000, date: "2024-04-01", status: "paid" as const },
+  { id: "INV-0084", tenant: "Нар Мандах", amount: 2250000, date: "2024-04-01", status: "paid" as const },
+  { id: "INV-0085", tenant: "Оюун Эрдэнэ", amount: 4500000, date: "2024-04-01", status: "paid" as const },
+  { id: "INV-0087", tenant: "Бат Дорж", amount: 850000, date: "2024-05-01", status: "overdue" as const },
+  { id: "INV-0092", tenant: "Болд Сүхбат", amount: 1200000, date: "2024-05-01", status: "overdue" as const },
+  { id: "INV-0095", tenant: "Ган Тулга", amount: 650000, date: "2024-05-01", status: "unpaid" as const },
+  { id: "INV-0101", tenant: "Нар Мандах", amount: 780000, date: "2024-05-01", status: "unpaid" as const },
+  { id: "INV-0103", tenant: "Оюун Эрдэнэ", amount: 620000, date: "2024-05-01", status: "unpaid" as const },
+  { id: "INV-0110", tenant: "Бат Дорж", amount: 2550000, date: "2024-06-01", status: "paid" as const },
+  { id: "INV-0111", tenant: "Болд Сүхбат", amount: 4200000, date: "2024-06-01", status: "paid" as const },
+  { id: "INV-0112", tenant: "Ган Тулга", amount: 7000000, date: "2024-06-01", status: "paid" as const },
+  { id: "INV-0113", tenant: "Нар Мандах", amount: 2250000, date: "2024-06-01", status: "unpaid" as const },
+  { id: "INV-0114", tenant: "Оюун Эрдэнэ", amount: 4500000, date: "2024-06-01", status: "paid" as const },
+];
+
 const overdueInvoices = [
   { id: "INV-0087", tenant: "Бат Дорж", amount: 850000, dueDate: "2024-05-15", days: 21 },
   { id: "INV-0092", tenant: "Болд Сүхбат", amount: 1200000, dueDate: "2024-05-20", days: 16 },
@@ -70,9 +88,10 @@ const payables = [
 ];
 
 const Finance = () => {
+  const [invoicesOpen, setInvoicesOpen] = useState(true);
   const [overdueOpen, setOverdueOpen] = useState(true);
-  const [receivablesOpen, setReceivablesOpen] = useState(false);
-  const [payablesOpen, setPayablesOpen] = useState(false);
+  const [receivablesOpen, setReceivablesOpen] = useState(true);
+  const [payablesOpen, setPayablesOpen] = useState(true);
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -122,6 +141,59 @@ const Finance = () => {
 
       {/* Collapsible sections */}
       <div className="space-y-4">
+        {/* Sent Invoices */}
+        <Collapsible open={invoicesOpen} onOpenChange={setInvoicesOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    Илгээгдсэн нэхэмжлэлүүд
+                    <Badge variant="outline" className="text-xs">{sentInvoices.length}</Badge>
+                  </CardTitle>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    {invoicesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Дугаар</TableHead>
+                      <TableHead>Түрээслэгч</TableHead>
+                      <TableHead className="text-right">Дүн</TableHead>
+                      <TableHead className="hidden sm:table-cell">Огноо</TableHead>
+                      <TableHead className="text-right">Төлөв</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sentInvoices.map((inv) => (
+                      <TableRow key={inv.id + inv.date}>
+                        <TableCell><Badge variant="outline" className="font-mono text-xs">{inv.id}</Badge></TableCell>
+                        <TableCell className="font-medium">{inv.tenant}</TableCell>
+                        <TableCell className="text-right">{formatMNT(inv.amount)}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-muted-foreground">{inv.date}</TableCell>
+                        <TableCell className="text-right">
+                          <Badge
+                            variant={inv.status === "paid" ? "default" : inv.status === "overdue" ? "destructive" : "secondary"}
+                            className="text-xs"
+                          >
+                            {inv.status === "paid" ? "Төлөгдсөн" : inv.status === "overdue" ? "Хугацаа хэтэрсэн" : "Төлөгдөөгүй"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+
         {/* Overdue */}
         <Collapsible open={overdueOpen} onOpenChange={setOverdueOpen}>
           <Card>
