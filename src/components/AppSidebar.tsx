@@ -1,5 +1,6 @@
 import { LayoutDashboard, Building2, Receipt, Wrench, Users, User, Settings, LogOut, ChevronUp } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { useAuth } from "@/contexts/AuthContext";
 import { useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -36,6 +37,7 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
@@ -93,13 +95,15 @@ export function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton className="w-full">
                   <Avatar className="h-7 w-7">
-                    <AvatarFallback className="text-xs bg-primary text-primary-foreground">БА</AvatarFallback>
+                    <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                      {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                    </AvatarFallback>
                   </Avatar>
                   {!collapsed && (
                     <div className="flex flex-1 items-center justify-between">
                       <div className="text-left">
-                        <p className="text-sm font-medium leading-none">Б. Амарбат</p>
-                        <p className="text-xs text-muted-foreground">Админ</p>
+                        <p className="text-sm font-medium leading-none">{user?.name || "Хэрэглэгч"}</p>
+                        <p className="text-xs text-muted-foreground">{user?.role === "admin" ? "Админ" : "Хэрэглэгч"}</p>
                       </div>
                       <ChevronUp className="h-4 w-4 text-muted-foreground" />
                     </div>
@@ -116,7 +120,7 @@ export function AppSidebar() {
                   Тохиргоо
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive">
+                <DropdownMenuItem className="text-destructive" onClick={logout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   Гарах
                 </DropdownMenuItem>
