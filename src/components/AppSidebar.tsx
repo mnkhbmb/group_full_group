@@ -30,7 +30,7 @@ const menuItems = [
   { title: "Хөрөнгө", url: "/property", icon: Building2 },
   { title: "Түрээслэгч", url: "/tenants", icon: Users },
   { title: "Санхүү бүртгэл", url: "/finance", icon: Receipt },
-  { title: "Ашиглалт", url: "/operations", icon: Wrench, comingSoon: true },
+  { title: "Ашиглалт", url: "/operations", icon: Wrench },
 ];
 
 export function AppSidebar() {
