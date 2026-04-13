@@ -9,6 +9,7 @@ import {
   TrendingDown,
   ChevronDown,
   ChevronUp,
+  Eye,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,8 +28,32 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
 const formatMNT = (v: number) => v.toLocaleString("mn-MN") + "₮";
+
+interface InvoiceBreakdown {
+  rent: number;
+  management: number;
+  utility: number;
+}
+
+interface SentInvoice {
+  id: string;
+  tenant: string;
+  amount: number;
+  date: string;
+  status: "paid" | "overdue" | "unpaid";
+  breakdown: InvoiceBreakdown;
+  paidAmount?: number;
+  paidBreakdown?: InvoiceBreakdown;
+}
 
 interface MiniStat {
   title: string;
@@ -48,22 +73,22 @@ const kpiData: MiniStat[] = [
   { title: "Өглөгийн бүртгэл", value: "3.8 сая₮", subtitle: "5 нийлүүлэгч", icon: TrendingDown, color: "text-orange-500" },
 ];
 
-const sentInvoices = [
-  { id: "INV-0081", tenant: "Бат Дорж", amount: 2550000, date: "2024-04-01", status: "paid" as const },
-  { id: "INV-0082", tenant: "Болд Сүхбат", amount: 4200000, date: "2024-04-01", status: "paid" as const },
-  { id: "INV-0083", tenant: "Ган Тулга", amount: 7000000, date: "2024-04-01", status: "paid" as const },
-  { id: "INV-0084", tenant: "Нар Мандах", amount: 2250000, date: "2024-04-01", status: "paid" as const },
-  { id: "INV-0085", tenant: "Оюун Эрдэнэ", amount: 4500000, date: "2024-04-01", status: "paid" as const },
-  { id: "INV-0087", tenant: "Бат Дорж", amount: 850000, date: "2024-05-01", status: "overdue" as const },
-  { id: "INV-0092", tenant: "Болд Сүхбат", amount: 1200000, date: "2024-05-01", status: "overdue" as const },
-  { id: "INV-0095", tenant: "Ган Тулга", amount: 650000, date: "2024-05-01", status: "unpaid" as const },
-  { id: "INV-0101", tenant: "Нар Мандах", amount: 780000, date: "2024-05-01", status: "unpaid" as const },
-  { id: "INV-0103", tenant: "Оюун Эрдэнэ", amount: 620000, date: "2024-05-01", status: "unpaid" as const },
-  { id: "INV-0110", tenant: "Бат Дорж", amount: 2550000, date: "2024-06-01", status: "paid" as const },
-  { id: "INV-0111", tenant: "Болд Сүхбат", amount: 4200000, date: "2024-06-01", status: "paid" as const },
-  { id: "INV-0112", tenant: "Ган Тулга", amount: 7000000, date: "2024-06-01", status: "paid" as const },
-  { id: "INV-0113", tenant: "Нар Мандах", amount: 2250000, date: "2024-06-01", status: "unpaid" as const },
-  { id: "INV-0114", tenant: "Оюун Эрдэнэ", amount: 4500000, date: "2024-06-01", status: "paid" as const },
+const sentInvoices: SentInvoice[] = [
+  { id: "INV-0081", tenant: "Бат Дорж", amount: 2550000, date: "2024-04-01", status: "paid", breakdown: { rent: 1800000, management: 450000, utility: 300000 }, paidAmount: 2550000, paidBreakdown: { rent: 1800000, management: 450000, utility: 300000 } },
+  { id: "INV-0082", tenant: "Болд Сүхбат", amount: 4200000, date: "2024-04-01", status: "paid", breakdown: { rent: 3000000, management: 720000, utility: 480000 }, paidAmount: 4200000, paidBreakdown: { rent: 3000000, management: 720000, utility: 480000 } },
+  { id: "INV-0083", tenant: "Ган Тулга", amount: 7000000, date: "2024-04-01", status: "paid", breakdown: { rent: 5000000, management: 1200000, utility: 800000 }, paidAmount: 7000000, paidBreakdown: { rent: 5000000, management: 1200000, utility: 800000 } },
+  { id: "INV-0084", tenant: "Нар Мандах", amount: 2250000, date: "2024-04-01", status: "paid", breakdown: { rent: 1600000, management: 390000, utility: 260000 }, paidAmount: 2250000, paidBreakdown: { rent: 1600000, management: 390000, utility: 260000 } },
+  { id: "INV-0085", tenant: "Оюун Эрдэнэ", amount: 4500000, date: "2024-04-01", status: "paid", breakdown: { rent: 3200000, management: 780000, utility: 520000 }, paidAmount: 4500000, paidBreakdown: { rent: 3200000, management: 780000, utility: 520000 } },
+  { id: "INV-0087", tenant: "Бат Дорж", amount: 850000, date: "2024-05-01", status: "overdue", breakdown: { rent: 600000, management: 150000, utility: 100000 } },
+  { id: "INV-0092", tenant: "Болд Сүхбат", amount: 1200000, date: "2024-05-01", status: "overdue", breakdown: { rent: 850000, management: 210000, utility: 140000 } },
+  { id: "INV-0095", tenant: "Ган Тулга", amount: 650000, date: "2024-05-01", status: "unpaid", breakdown: { rent: 460000, management: 114000, utility: 76000 } },
+  { id: "INV-0101", tenant: "Нар Мандах", amount: 780000, date: "2024-05-01", status: "unpaid", breakdown: { rent: 550000, management: 138000, utility: 92000 } },
+  { id: "INV-0103", tenant: "Оюун Эрдэнэ", amount: 620000, date: "2024-05-01", status: "unpaid", breakdown: { rent: 440000, management: 108000, utility: 72000 } },
+  { id: "INV-0110", tenant: "Бат Дорж", amount: 2550000, date: "2024-06-01", status: "paid", breakdown: { rent: 1800000, management: 450000, utility: 300000 }, paidAmount: 2550000, paidBreakdown: { rent: 1800000, management: 450000, utility: 300000 } },
+  { id: "INV-0111", tenant: "Болд Сүхбат", amount: 4200000, date: "2024-06-01", status: "paid", breakdown: { rent: 3000000, management: 720000, utility: 480000 }, paidAmount: 4200000, paidBreakdown: { rent: 3000000, management: 720000, utility: 480000 } },
+  { id: "INV-0112", tenant: "Ган Тулга", amount: 7000000, date: "2024-06-01", status: "paid", breakdown: { rent: 5000000, management: 1200000, utility: 800000 }, paidAmount: 7000000, paidBreakdown: { rent: 5000000, management: 1200000, utility: 800000 } },
+  { id: "INV-0113", tenant: "Нар Мандах", amount: 2250000, date: "2024-06-01", status: "unpaid", breakdown: { rent: 1600000, management: 390000, utility: 260000 } },
+  { id: "INV-0114", tenant: "Оюун Эрдэнэ", amount: 4500000, date: "2024-06-01", status: "paid", breakdown: { rent: 3200000, management: 780000, utility: 520000 }, paidAmount: 4500000, paidBreakdown: { rent: 3200000, management: 780000, utility: 520000 } },
 ];
 
 const overdueInvoices = [
@@ -92,6 +117,7 @@ const Finance = () => {
   const [overdueOpen, setOverdueOpen] = useState(true);
   const [receivablesOpen, setReceivablesOpen] = useState(true);
   const [payablesOpen, setPayablesOpen] = useState(true);
+  const [selectedInvoice, setSelectedInvoice] = useState<SentInvoice | null>(null);
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -165,9 +191,13 @@ const Finance = () => {
                     <TableRow>
                       <TableHead>Дугаар</TableHead>
                       <TableHead>Түрээслэгч</TableHead>
-                      <TableHead className="text-right">Дүн</TableHead>
+                      <TableHead className="text-right">Түрээс</TableHead>
+                      <TableHead className="text-right">Менежмент</TableHead>
+                      <TableHead className="text-right">Ашиглалт</TableHead>
+                      <TableHead className="text-right">Нийт дүн</TableHead>
                       <TableHead className="hidden sm:table-cell">Огноо</TableHead>
                       <TableHead className="text-right">Төлөв</TableHead>
+                      <TableHead className="text-center">Дэлгэрэнгүй</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -175,7 +205,10 @@ const Finance = () => {
                       <TableRow key={inv.id + inv.date}>
                         <TableCell><Badge variant="outline" className="font-mono text-xs">{inv.id}</Badge></TableCell>
                         <TableCell className="font-medium">{inv.tenant}</TableCell>
-                        <TableCell className="text-right">{formatMNT(inv.amount)}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{formatMNT(inv.breakdown.rent)}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{formatMNT(inv.breakdown.management)}</TableCell>
+                        <TableCell className="text-right text-muted-foreground">{formatMNT(inv.breakdown.utility)}</TableCell>
+                        <TableCell className="text-right font-medium">{formatMNT(inv.amount)}</TableCell>
                         <TableCell className="hidden sm:table-cell text-muted-foreground">{inv.date}</TableCell>
                         <TableCell className="text-right">
                           <Badge
@@ -184,6 +217,11 @@ const Finance = () => {
                           >
                             {inv.status === "paid" ? "Төлөгдсөн" : inv.status === "overdue" ? "Хугацаа хэтэрсэн" : "Төлөгдөөгүй"}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setSelectedInvoice(inv)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -338,6 +376,98 @@ const Finance = () => {
           </Card>
         </Collapsible>
       </div>
+
+      {/* Invoice Detail Dialog */}
+      <Dialog open={!!selectedInvoice} onOpenChange={(open) => !open && setSelectedInvoice(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Нэхэмжлэл {selectedInvoice?.id}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedInvoice && (
+            <div className="space-y-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Түрээслэгч:</span>
+                <span className="font-medium">{selectedInvoice.tenant}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Огноо:</span>
+                <span>{selectedInvoice.date}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Төлөв:</span>
+                <Badge
+                  variant={selectedInvoice.status === "paid" ? "default" : selectedInvoice.status === "overdue" ? "destructive" : "secondary"}
+                  className="text-xs"
+                >
+                  {selectedInvoice.status === "paid" ? "Төлөгдсөн" : selectedInvoice.status === "overdue" ? "Хугацаа хэтэрсэн" : "Төлөгдөөгүй"}
+                </Badge>
+              </div>
+
+              <Separator />
+
+              <div>
+                <h4 className="text-sm font-semibold mb-3">Нэхэмжлэлийн задаргаа</h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Түрээсийн төлбөр</span>
+                    <span>{formatMNT(selectedInvoice.breakdown.rent)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Менежментийн төлбөр</span>
+                    <span>{formatMNT(selectedInvoice.breakdown.management)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Ашиглалтын төлбөр</span>
+                    <span>{formatMNT(selectedInvoice.breakdown.utility)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between text-sm font-semibold">
+                    <span>Нийт дүн</span>
+                    <span>{formatMNT(selectedInvoice.amount)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {selectedInvoice.status === "paid" && selectedInvoice.paidBreakdown && (
+                <>
+                  <Separator />
+                  <div>
+                    <h4 className="text-sm font-semibold mb-3 text-green-600">Төлсөн дүнгийн задаргаа</h4>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Түрээсийн төлбөр</span>
+                        <span className="text-green-600">{formatMNT(selectedInvoice.paidBreakdown.rent)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Менежментийн төлбөр</span>
+                        <span className="text-green-600">{formatMNT(selectedInvoice.paidBreakdown.management)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Ашиглалтын төлбөр</span>
+                        <span className="text-green-600">{formatMNT(selectedInvoice.paidBreakdown.utility)}</span>
+                      </div>
+                      <Separator />
+                      <div className="flex justify-between text-sm font-semibold">
+                        <span>Нийт төлсөн</span>
+                        <span className="text-green-600">{formatMNT(selectedInvoice.paidAmount || 0)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-semibold">
+                        <span>Үлдэгдэл</span>
+                        <span className={selectedInvoice.amount - (selectedInvoice.paidAmount || 0) > 0 ? "text-destructive" : "text-green-600"}>
+                          {formatMNT(selectedInvoice.amount - (selectedInvoice.paidAmount || 0))}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

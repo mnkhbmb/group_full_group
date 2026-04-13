@@ -30,7 +30,7 @@ const menuItems = [
   { title: "Хөрөнгө", url: "/property", icon: Building2 },
   { title: "Түрээслэгч", url: "/tenants", icon: Users },
   { title: "Санхүү бүртгэл", url: "/finance", icon: Receipt },
-  { title: "Ашиглалт", url: "/operations", icon: Wrench, comingSoon: true },
+  { title: "Ашиглалт", url: "/operations", icon: Wrench },
 ];
 
 export function AppSidebar() {
@@ -64,22 +64,12 @@ export function AppSidebar() {
                     tooltip={item.title}
                   >
                     <NavLink
-                      to={item.comingSoon ? "#" : item.url}
+                      to={item.url}
                       end
-                      className={item.comingSoon ? "opacity-50 pointer-events-none" : ""}
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
                       <item.icon className="h-4 w-4" />
-                      {!collapsed && (
-                        <span className="flex items-center gap-2">
-                          {item.title}
-                          {item.comingSoon && (
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                              Тун удахгүй
-                            </Badge>
-                          )}
-                        </span>
-                      )}
+                      {!collapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

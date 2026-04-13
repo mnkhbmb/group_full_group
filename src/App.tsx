@@ -9,6 +9,7 @@ import Index from "./pages/Index.tsx";
 import Property from "./pages/Property.tsx";
 import Tenants from "./pages/Tenants.tsx";
 import Finance from "./pages/Finance.tsx";
+import Operations from "./pages/Operations.tsx";
 import Login from "./pages/Login.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -24,6 +25,7 @@ function ProtectedRoutes() {
         <Route path="/property" element={<Property />} />
         <Route path="/tenants" element={<Tenants />} />
         <Route path="/finance" element={<Finance />} />
+        <Route path="/operations" element={<Operations />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>
