@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Receipt,
   FileText,
@@ -10,6 +10,8 @@ import {
   ChevronDown,
   ChevronUp,
   Eye,
+  Plus,
+  Search,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +25,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Collapsible,
   CollapsibleContent,
@@ -33,8 +37,22 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const formatMNT = (v: number) => v.toLocaleString("mn-MN") + "₮";
 
@@ -73,7 +91,7 @@ const kpiData: MiniStat[] = [
   { title: "Өглөгийн бүртгэл", value: "3.8 сая₮", subtitle: "5 нийлүүлэгч", icon: TrendingDown, color: "text-orange-500" },
 ];
 
-const sentInvoices: SentInvoice[] = [
+const initialInvoices: SentInvoice[] = [
   { id: "INV-0081", tenant: "Бат Дорж", amount: 2550000, date: "2024-04-01", status: "paid", breakdown: { rent: 1800000, management: 450000, utility: 300000 }, paidAmount: 2550000, paidBreakdown: { rent: 1800000, management: 450000, utility: 300000 } },
   { id: "INV-0082", tenant: "Болд Сүхбат", amount: 4200000, date: "2024-04-01", status: "paid", breakdown: { rent: 3000000, management: 720000, utility: 480000 }, paidAmount: 4200000, paidBreakdown: { rent: 3000000, management: 720000, utility: 480000 } },
   { id: "INV-0083", tenant: "Ган Тулга", amount: 7000000, date: "2024-04-01", status: "paid", breakdown: { rent: 5000000, management: 1200000, utility: 800000 }, paidAmount: 7000000, paidBreakdown: { rent: 5000000, management: 1200000, utility: 800000 } },
@@ -112,22 +130,130 @@ const payables = [
   { supplier: "Лифт Засвар ХХК", total: 2450000, paid: 2450000, remaining: 0 },
 ];
 
+const tenantNames = ["Бат Дорж", "Болд Сүхбат", "Ган Тулга", "Нар Мандах", "Оюун Эрдэнэ"];
+
+const statusMap: Record<string, string> = {
+  paid: "төлөгдсөн",
+  overdue: "хугацаа хэтэрсэн",
+  unpaid: "төлөгдөөгүй",
+};
+
+function fuzzyMatch(text: string, query: string): boolean {
+  const t = text.toLowerCase();
+  const q = query.toLowerCase();
+  let qi = 0;
+  for (let i = 0; i < t.length && qi < q.length; i++) {
+    if (t[i] === q[qi]) qi++;
+  }
+  return qi === q.length;
+}
+
+function StackedBar({ breakdown, amount }: { breakdown: InvoiceBreakdown; amount: number }) {
+  const rentPct = (breakdown.rent / amount) * 100;
+  const mgmtPct = (breakdown.management / amount) * 100;
+  const utilPct = (breakdown.utility / amount) * 100;
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex h-3 w-full min-w-[120px] rounded-full overflow-hidden bg-muted cursor-pointer">
+            <div className="h-full bg-primary" style={{ width: `${rentPct}%` }} />
+            <div className="h-full" style={{ width: `${mgmtPct}%`, backgroundColor: "hsl(210 70% 50%)" }} />
+            <div className="h-full" style={{ width: `${utilPct}%`, backgroundColor: "hsl(150 60% 45%)" }} />
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <div className="space-y-1 text-xs">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span>Түрээс: {formatMNT(breakdown.rent)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "hsl(210 70% 50%)" }} />
+              <span>Менежмент: {formatMNT(breakdown.management)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "hsl(150 60% 45%)" }} />
+              <span>Ашиглалт: {formatMNT(breakdown.utility)}</span>
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 const Finance = () => {
   const [invoicesOpen, setInvoicesOpen] = useState(true);
   const [overdueOpen, setOverdueOpen] = useState(true);
   const [receivablesOpen, setReceivablesOpen] = useState(true);
   const [payablesOpen, setPayablesOpen] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState<SentInvoice | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [invoices, setInvoices] = useState<SentInvoice[]>(initialInvoices);
+
+  // Create invoice form
+  const [newTenant, setNewTenant] = useState("");
+  const [newRent, setNewRent] = useState("");
+  const [newMgmt, setNewMgmt] = useState("");
+  const [newUtil, setNewUtil] = useState("");
+
+  const filteredInvoices = useMemo(() => {
+    if (!searchQuery.trim()) return invoices;
+    return invoices.filter((inv) => {
+      const searchable = [
+        inv.id,
+        inv.tenant,
+        formatMNT(inv.amount),
+        inv.date,
+        statusMap[inv.status] || inv.status,
+      ].join(" ");
+      return fuzzyMatch(searchable, searchQuery);
+    });
+  }, [invoices, searchQuery]);
+
+  const handleCreateInvoice = () => {
+    const rent = Number(newRent) || 0;
+    const mgmt = Number(newMgmt) || 0;
+    const util = Number(newUtil) || 0;
+    if (!newTenant || (rent + mgmt + util) === 0) return;
+
+    const newInv: SentInvoice = {
+      id: `INV-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+      tenant: newTenant,
+      amount: rent + mgmt + util,
+      date: new Date().toISOString().split("T")[0],
+      status: "unpaid",
+      breakdown: { rent, management: mgmt, utility: util },
+    };
+
+    setInvoices((prev) => [newInv, ...prev]);
+    setCreateOpen(false);
+    setNewTenant("");
+    setNewRent("");
+    setNewMgmt("");
+    setNewUtil("");
+  };
 
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Receipt className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Санхүү бүртгэл</h1>
-          <p className="text-sm text-muted-foreground">Нэхэмжлэл, авлага, өглөгийн нэгдсэн хяналт</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Receipt className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Санхүү бүртгэл</h1>
+            <p className="text-sm text-muted-foreground">
+              Нэхэмжлэл, авлага, өглөгийн нэгдсэн хяналт • 1-5-нд тооцоо, 5-нд илгээнэ, 20-нд сануулга
+            </p>
+          </div>
         </div>
+        <Button onClick={() => setCreateOpen(true)} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Нэхэмжлэх үүсгэх
+        </Button>
       </div>
 
       {/* Mini Dashboard KPIs */}
@@ -176,7 +302,7 @@ const Finance = () => {
                   <CardTitle className="text-base flex items-center gap-2">
                     <FileText className="h-4 w-4 text-primary" />
                     Илгээгдсэн нэхэмжлэлүүд
-                    <Badge variant="outline" className="text-xs">{sentInvoices.length}</Badge>
+                    <Badge variant="outline" className="text-xs">{filteredInvoices.length}</Badge>
                   </CardTitle>
                   <Button variant="ghost" size="icon" className="h-6 w-6">
                     {invoicesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -186,14 +312,32 @@ const Finance = () => {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="p-0">
+                {/* Search */}
+                <div className="px-4 pb-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Хайх... (дугаар, нэр, дүн, огноо, төлөв)"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div className="px-4 pb-2 flex gap-4 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-primary" /> Түрээс</span>
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: "hsl(210 70% 50%)" }} /> Менежмент</span>
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: "hsl(150 60% 45%)" }} /> Ашиглалт</span>
+                </div>
+
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Дугаар</TableHead>
                       <TableHead>Түрээслэгч</TableHead>
-                      <TableHead className="text-right">Түрээс</TableHead>
-                      <TableHead className="text-right">Менежмент</TableHead>
-                      <TableHead className="text-right">Ашиглалт</TableHead>
+                      <TableHead>Задаргаа</TableHead>
                       <TableHead className="text-right">Нийт дүн</TableHead>
                       <TableHead className="hidden sm:table-cell">Огноо</TableHead>
                       <TableHead className="text-right">Төлөв</TableHead>
@@ -201,13 +345,13 @@ const Finance = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sentInvoices.map((inv) => (
+                    {filteredInvoices.map((inv) => (
                       <TableRow key={inv.id + inv.date}>
                         <TableCell><Badge variant="outline" className="font-mono text-xs">{inv.id}</Badge></TableCell>
                         <TableCell className="font-medium">{inv.tenant}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{formatMNT(inv.breakdown.rent)}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{formatMNT(inv.breakdown.management)}</TableCell>
-                        <TableCell className="text-right text-muted-foreground">{formatMNT(inv.breakdown.utility)}</TableCell>
+                        <TableCell className="min-w-[140px]">
+                          <StackedBar breakdown={inv.breakdown} amount={inv.amount} />
+                        </TableCell>
                         <TableCell className="text-right font-medium">{formatMNT(inv.amount)}</TableCell>
                         <TableCell className="hidden sm:table-cell text-muted-foreground">{inv.date}</TableCell>
                         <TableCell className="text-right">
@@ -466,6 +610,54 @@ const Finance = () => {
               )}
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Invoice Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-primary" />
+              Нэхэмжлэх үүсгэх
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Түрээслэгч</Label>
+              <Select value={newTenant} onValueChange={setNewTenant}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Түрээслэгч сонгох" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tenantNames.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Түрээсийн төлбөр (₮)</Label>
+              <Input type="number" value={newRent} onChange={(e) => setNewRent(e.target.value)} placeholder="0" />
+            </div>
+            <div className="space-y-2">
+              <Label>Менежментийн төлбөр (₮)</Label>
+              <Input type="number" value={newMgmt} onChange={(e) => setNewMgmt(e.target.value)} placeholder="0" />
+            </div>
+            <div className="space-y-2">
+              <Label>Ашиглалтын төлбөр (₮)</Label>
+              <Input type="number" value={newUtil} onChange={(e) => setNewUtil(e.target.value)} placeholder="0" />
+            </div>
+            {(Number(newRent) + Number(newMgmt) + Number(newUtil)) > 0 && (
+              <div className="text-sm font-medium text-foreground">
+                Нийт: {formatMNT(Number(newRent) + Number(newMgmt) + Number(newUtil))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Цуцлах</Button>
+            <Button onClick={handleCreateInvoice}>Үүсгэх</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -1,4 +1,5 @@
-import { Building2, Users, FileText, DollarSign, AlertCircle, BarChart3, TrendingUp, Home, MessageSquare } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Building2, Users, FileText, DollarSign, AlertCircle, BarChart3, TrendingUp, Home, MessageSquare, CalendarClock, Bell } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
@@ -76,6 +77,34 @@ const formatMNT = (value: number) => {
   return value.toString();
 };
 
+function getInvoiceCountdown() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const day = now.getDate();
+
+  // Next send date is the 5th. If today is after the 5th, it's next month's 5th.
+  let nextSend: Date;
+  if (day < 5) {
+    nextSend = new Date(year, month, 5);
+  } else {
+    nextSend = new Date(year, month + 1, 5);
+  }
+
+  // Next reminder is the 20th
+  let nextReminder: Date;
+  if (day < 20) {
+    nextReminder = new Date(year, month, 20);
+  } else {
+    nextReminder = new Date(year, month + 1, 20);
+  }
+
+  const diffSend = Math.ceil((nextSend.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  const diffReminder = Math.ceil((nextReminder.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+  return { diffSend, diffReminder, nextSend, nextReminder };
+}
+
 const StatCard = ({
   title,
   value,
@@ -103,6 +132,13 @@ const StatCard = ({
 );
 
 const Index = () => {
+  const [countdown, setCountdown] = useState(getInvoiceCountdown());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCountdown(getInvoiceCountdown()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -120,6 +156,44 @@ const Index = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6">
+        {/* Invoice Schedule Countdown */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card className="border-primary/30 bg-primary/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 text-primary" />
+                Нэхэмжлэх илгээх хуваарь
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-primary">{countdown.diffSend} хоног</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Дараагийн илгээх огноо: Сар бүрийн 5-нд
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                1-5-ны хооронд тооцоо хийгдэнэ
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border-orange-500/30 bg-orange-500/5">
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Bell className="h-4 w-4 text-orange-500" />
+                Төлбөрийн сануулга
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-orange-500">{countdown.diffReminder} хоног</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Дараагийн сануулга: Сар бүрийн 20-нд
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Төлөгдөөгүй нэхэмжлэхийг сануулна
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* KPI Cards Row 1 - Property */}
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
