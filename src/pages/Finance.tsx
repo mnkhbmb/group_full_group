@@ -139,41 +139,6 @@ function fuzzyMatch(text: string, query: string): boolean {
   return qi === q.length;
 }
 
-function StackedBar({ breakdown, amount }: { breakdown: InvoiceBreakdown; amount: number }) {
-  const rentPct = (breakdown.rent / amount) * 100;
-  const mgmtPct = (breakdown.management / amount) * 100;
-  const utilPct = (breakdown.utility / amount) * 100;
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex h-3 w-full min-w-[120px] rounded-full overflow-hidden bg-muted cursor-pointer">
-            <div className="h-full bg-primary" style={{ width: `${rentPct}%` }} />
-            <div className="h-full" style={{ width: `${mgmtPct}%`, backgroundColor: "hsl(210 70% 50%)" }} />
-            <div className="h-full" style={{ width: `${utilPct}%`, backgroundColor: "hsl(150 60% 45%)" }} />
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <div className="space-y-1 text-xs">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-primary" />
-              <span>Түрээс: {formatMNT(breakdown.rent)}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "hsl(210 70% 50%)" }} />
-              <span>Менежмент: {formatMNT(breakdown.management)}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "hsl(150 60% 45%)" }} />
-              <span>Ашиглалт: {formatMNT(breakdown.utility)}</span>
-            </div>
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
 
 /** Төлбөр тус бүрийн төлөгдсөн/үлдэгдэл progress bar */
 function PaymentBreakdownBars({ breakdown, paidBreakdown }: { breakdown: InvoiceBreakdown; paidBreakdown: InvoiceBreakdown }) {
