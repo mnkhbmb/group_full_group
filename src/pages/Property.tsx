@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { PropertyRecord, mainObjects, propertyData } from "@/data/properties";
+import { PropertyRecord, mainObjects as initialObjects, propertyData } from "@/data/properties";
 
 const emptyForm = {
   objectName: "",
