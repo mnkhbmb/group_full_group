@@ -49,7 +49,22 @@ const Property = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState(emptyForm);
+  const [objects, setObjects] = useState<string[]>(initialObjects);
+  const [objectDialogOpen, setObjectDialogOpen] = useState(false);
+  const [newObjectName, setNewObjectName] = useState("");
   const { toast } = useToast();
+
+  const handleAddObject = () => {
+    if (!newObjectName.trim()) return;
+    if (objects.includes(newObjectName.trim())) {
+      toast({ title: "Алдаа", description: "Энэ объект аль хэдийн бүртгэгдсэн байна", variant: "destructive" });
+      return;
+    }
+    setObjects((prev) => [...prev, newObjectName.trim()]);
+    setNewObjectName("");
+    setObjectDialogOpen(false);
+    toast({ title: "Амжилттай", description: "Шинэ объект нэмэгдлээ" });
+  };
 
   const filtered = useMemo(() => {
     if (!search.trim()) return records;
@@ -139,9 +154,14 @@ const Property = () => {
             <p className="text-sm text-muted-foreground">Нийт {records.length} бүртгэл</p>
           </div>
         </div>
-        <Button onClick={openCreate} className="gap-2">
-          <Plus className="h-4 w-4" /> Шинээр бүртгэх
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setObjectDialogOpen(true)} className="gap-2">
+            <Building2 className="h-4 w-4" /> Объект нэмэх
+          </Button>
+          <Button onClick={openCreate} className="gap-2">
+            <Plus className="h-4 w-4" /> Шинээр бүртгэх
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-md">
