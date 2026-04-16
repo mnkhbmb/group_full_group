@@ -97,6 +97,22 @@ const kpiData: MiniStat[] = [
   { title: "Хугацаа хэтэрсэн", value: 7, subtitle: "Нийт дүн: 4.1 сая₮", icon: Clock, color: "text-orange-500" },
 ];
 
+interface ReadyInvoice {
+  id: string;
+  tenant: string;
+  amount: number;
+  breakdown: InvoiceBreakdown;
+  period: string;
+}
+
+const readyInvoices: ReadyInvoice[] = [
+  { id: "INV-0120", tenant: "Бат Дорж", amount: 2550000, breakdown: { rent: 1800000, management: 450000, utility: 300000 }, period: "2024-07" },
+  { id: "INV-0121", tenant: "Болд Сүхбат", amount: 4200000, breakdown: { rent: 3000000, management: 720000, utility: 480000 }, period: "2024-07" },
+  { id: "INV-0122", tenant: "Ган Тулга", amount: 7000000, breakdown: { rent: 5000000, management: 1200000, utility: 800000 }, period: "2024-07" },
+  { id: "INV-0123", tenant: "Нар Мандах", amount: 2250000, breakdown: { rent: 1600000, management: 390000, utility: 260000 }, period: "2024-07" },
+  { id: "INV-0124", tenant: "Оюун Эрдэнэ", amount: 4500000, breakdown: { rent: 3200000, management: 780000, utility: 520000 }, period: "2024-07" },
+];
+
 const initialInvoices: SentInvoice[] = [
   { id: "INV-0081", tenant: "Бат Дорж", amount: 2550000, date: "2024-04-01", status: "paid", breakdown: { rent: 1800000, management: 450000, utility: 300000 }, paidAmount: 2550000 },
   { id: "INV-0082", tenant: "Болд Сүхбат", amount: 4200000, date: "2024-04-01", status: "paid", breakdown: { rent: 3000000, management: 720000, utility: 480000 }, paidAmount: 4200000 },
@@ -168,6 +184,7 @@ function PaymentBreakdownBars({ breakdown, paidBreakdown }: { breakdown: Invoice
 
 const Finance = () => {
   const [invoicesOpen, setInvoicesOpen] = useState(true);
+  const [readyOpen, setReadyOpen] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState<SentInvoice | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -280,6 +297,56 @@ const Finance = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Ready to Send Invoices */}
+      <Collapsible open={readyOpen} onOpenChange={setReadyOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-orange-500" />
+                  Илгээхэд бэлэн нэхэмжлэхүүд
+                  <Badge variant="outline" className="text-xs">{readyInvoices.length}</Badge>
+                </CardTitle>
+                <Button variant="ghost" size="icon" className="h-6 w-6">
+                  {readyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Дугаар</TableHead>
+                    <TableHead>Түрээслэгч</TableHead>
+                    <TableHead className="text-right">Нийт дүн</TableHead>
+                    <TableHead className="hidden sm:table-cell">Хугацаа</TableHead>
+                    <TableHead className="text-right">Түрээс</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">Менежмент</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">Ашиглалт</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {readyInvoices.map((inv) => (
+                    <TableRow key={inv.id}>
+                      <TableCell><Badge variant="outline" className="font-mono text-xs">{inv.id}</Badge></TableCell>
+                      <TableCell className="font-medium">{inv.tenant}</TableCell>
+                      <TableCell className="text-right font-medium">{formatMNT(inv.amount)}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">{inv.period}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{formatMNT(inv.breakdown.rent)}</TableCell>
+                      <TableCell className="text-right text-muted-foreground hidden sm:table-cell">{formatMNT(inv.breakdown.management)}</TableCell>
+                      <TableCell className="text-right text-muted-foreground hidden sm:table-cell">{formatMNT(inv.breakdown.utility)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Sent Invoices */}
       <Collapsible open={invoicesOpen} onOpenChange={setInvoicesOpen}>
