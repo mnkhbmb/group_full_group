@@ -249,7 +249,7 @@ const Property = () => {
                   <SelectValue placeholder="Объект сонгох" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mainObjects.map((obj) => (
+                  {objects.map((obj) => (
                     <SelectItem key={obj} value={obj}>{obj}</SelectItem>
                   ))}
                 </SelectContent>
@@ -291,6 +291,29 @@ const Property = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Болих</Button>
             <Button onClick={handleSubmit}>{editingId ? "Хадгалах" : "Бүртгэх"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Object Dialog */}
+      <Dialog open={objectDialogOpen} onOpenChange={setObjectDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Шинэ объект нэмэх</DialogTitle>
+            <DialogDescription>Объектын нэрийг оруулна уу</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Объектын нэр *</Label>
+            <Input
+              placeholder="Жишээ: Алтай Тауэр"
+              value={newObjectName}
+              onChange={(e) => setNewObjectName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddObject()}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setObjectDialogOpen(false)}>Болих</Button>
+            <Button onClick={handleAddObject}>Нэмэх</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
