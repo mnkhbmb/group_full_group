@@ -199,7 +199,7 @@ const Index = () => {
           <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
             <Home className="h-5 w-5" /> Объект & Талбайн мэдээлэл
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <StatCard title="Объектын тоо" value={12} icon={Building2} subtitle="Нийт бүртгэлтэй" />
             <StatCard title="Түрээслэсэн талбай" value={156} icon={BarChart3} subtitle="24,800 м²" />
             <StatCard title="Түрээслэсэн хэмжээ" value="24,800 м²" icon={TrendingUp} trend="+3.2%" />
@@ -213,7 +213,7 @@ const Index = () => {
           <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
             <Users className="h-5 w-5" /> Түрээслэгч & Санхүү
           </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <StatCard title="Түрээслэгчдийн тоо" value={143} icon={Users} trend="+5 шинэ" />
             <StatCard title="Түрээсийн орлого" value="51.0 сая₮" icon={DollarSign} trend="+4.2%" />
             <StatCard title="Менежментийн орлого" value="9.5 сая₮" icon={DollarSign} trend="+3.3%" />
