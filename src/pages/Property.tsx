@@ -38,6 +38,7 @@ const emptyForm = {
   areaSize: "",
   rentalAmount: "",
   pricePerSqm: "",
+  managementFeePerSqm: "",
   status: "vacant" as "rented" | "vacant",
 };
 
@@ -92,6 +93,7 @@ const Property = () => {
       areaSize: String(r.areaSize),
       rentalAmount: String(r.rentalAmount),
       pricePerSqm: String(r.pricePerSqm),
+      managementFeePerSqm: String(r.managementFeePerSqm ?? 0),
       status: r.status,
     });
     setDialogOpen(true);
@@ -115,6 +117,7 @@ const Property = () => {
                 areaSize: Number(form.areaSize) || 0,
                 rentalAmount: Number(form.rentalAmount) || 0,
                 pricePerSqm: Number(form.pricePerSqm) || 0,
+                managementFeePerSqm: Number(form.managementFeePerSqm) || 0,
                 status: form.status,
               }
             : r
@@ -130,6 +133,7 @@ const Property = () => {
         areaSize: Number(form.areaSize) || 0,
         rentalAmount: Number(form.rentalAmount) || 0,
         pricePerSqm: Number(form.pricePerSqm) || 0,
+        managementFeePerSqm: Number(form.managementFeePerSqm) || 0,
         status: form.status,
         createdAt: new Date().toISOString().split("T")[0],
       };
