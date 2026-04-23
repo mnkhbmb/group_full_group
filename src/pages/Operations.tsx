@@ -34,12 +34,11 @@ import { toast } from "@/hooks/use-toast";
 import { tenantList, type TenantInfo } from "@/data/tenants";
 import { propertyData, utilityRates, calcUtilityCost } from "@/data/properties";
 import {
-  initialMeterStore,
   previousMonth,
   calcConsumption,
   type MeterReading,
-  type MeterStore,
 } from "@/data/meterReadings";
+import { useMeterStore } from "@/data/meterStore";
 
 const formatMNT = (v: number) => Math.round(v).toLocaleString("mn-MN") + "₮";
 
