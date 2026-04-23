@@ -739,6 +739,9 @@ const Finance = () => {
               <Send className="h-5 w-5 text-primary" />
               {sendDone ? "Илгээж дуусгалаа" : "Нэхэмжлэх илгээж байна..."}
             </DialogTitle>
+            <DialogDescription>
+              Илгээхэд бэлэн нэхэмжлэхүүдийг дараалан илгээж байна.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex justify-between text-sm">
