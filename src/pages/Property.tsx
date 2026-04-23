@@ -280,6 +280,10 @@ const Property = () => {
               <Input type="number" placeholder="30000" value={form.pricePerSqm} onChange={(e) => updateField("pricePerSqm", e.target.value)} />
             </div>
             <div className="space-y-2">
+              <Label>Менежментийн төлбөр (₮/м²)</Label>
+              <Input type="number" placeholder="5000" value={form.managementFeePerSqm} onChange={(e) => updateField("managementFeePerSqm", e.target.value)} />
+            </div>
+            <div className="space-y-2">
               <Label>Төлөв</Label>
               <Select value={form.status} onValueChange={(v) => updateField("status", v)}>
                 <SelectTrigger>
