@@ -197,6 +197,8 @@ const Finance = () => {
   const [newRent, setNewRent] = useState("");
   const [newMgmt, setNewMgmt] = useState("");
   const [newUtil, setNewUtil] = useState("");
+  const [newPeriod, setNewPeriod] = useState(() => new Date().toISOString().slice(0, 7));
+  const [autoFillNote, setAutoFillNote] = useState<string | null>(null);
 
   // Send-all progress state
   const [sendOpen, setSendOpen] = useState(false);
