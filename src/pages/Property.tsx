@@ -197,6 +197,7 @@ const Property = () => {
                   <TableHead>Талбай ID</TableHead>
                   <TableHead>Хэмжээ</TableHead>
                   <TableHead>МКВ дүн</TableHead>
+                  <TableHead className="hidden lg:table-cell">Менежмент ₮/м²</TableHead>
                   <TableHead>Түрээсийн дүн</TableHead>
                   <TableHead>Төлөв</TableHead>
                   <TableHead className="text-right">Үйлдэл</TableHead>
@@ -205,7 +206,7 @@ const Property = () => {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
                       Илэрц олдсонгүй
                     </TableCell>
                   </TableRow>
@@ -219,6 +220,7 @@ const Property = () => {
                       </TableCell>
                       <TableCell>{r.areaSize} м²</TableCell>
                       <TableCell>{formatMNT(r.pricePerSqm)}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{formatMNT(r.managementFeePerSqm)}</TableCell>
                       <TableCell className="font-medium">{formatMNT(r.rentalAmount)}</TableCell>
                       <TableCell>
                         <Badge variant={r.status === "rented" ? "default" : "secondary"}>
