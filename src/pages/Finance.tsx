@@ -647,19 +647,35 @@ const Finance = () => {
       </Dialog>
 
       {/* Create Invoice Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) {
+            // Dialog хаагдахад state-г reset хийнэ
+            setNewTenant("");
+            setNewRent("");
+            setNewMgmt("");
+            setNewUtil("");
+            setAutoFillNote(null);
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5 text-primary" />
               Нэхэмжлэх үүсгэх
             </DialogTitle>
+            <DialogDescription>
+              Түрээслэгч болон хугацаа сонгоход түрээс, менежмент, ашиглалтын дүн автоматаар бөглөгдөнө.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Түрээслэгч</Label>
-                <Select value={newTenant} onValueChange={handleSelectTenant}>
+                <Select value={newTenant} onValueChange={setNewTenant}>
                   <SelectTrigger>
                     <SelectValue placeholder="Түрээслэгч сонгох" />
                   </SelectTrigger>
@@ -675,13 +691,11 @@ const Finance = () => {
                 <Input
                   type="month"
                   value={newPeriod}
-                  onChange={(e) => {
-                    setNewPeriod(e.target.value);
-                    if (newTenant) handleSelectTenant(newTenant);
-                  }}
+                  onChange={(e) => setNewPeriod(e.target.value)}
                 />
               </div>
             </div>
+
 
             {autoFillNote && (
               <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs text-foreground">
