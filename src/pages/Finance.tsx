@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Receipt,
   FileText,
@@ -38,6 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -199,7 +200,12 @@ const Finance = () => {
   const [newRent, setNewRent] = useState("");
   const [newMgmt, setNewMgmt] = useState("");
   const [newUtil, setNewUtil] = useState("");
-  const [newPeriod, setNewPeriod] = useState(() => new Date().toISOString().slice(0, 7));
+  /** Default period: meter store-д байгаа хамгийн сүүлийн сар (өгөгдөлтэй) */
+  const latestStorePeriod = useMemo(() => {
+    const keys = Object.keys(meterStore).sort();
+    return keys.length > 0 ? keys[keys.length - 1] : new Date().toISOString().slice(0, 7);
+  }, [meterStore]);
+  const [newPeriod, setNewPeriod] = useState<string>(latestStorePeriod);
   const [autoFillNote, setAutoFillNote] = useState<string | null>(null);
 
   // Send-all progress state
@@ -224,10 +230,20 @@ const Finance = () => {
     });
   }, [invoices, searchQuery]);
 
-  /** Түрээслэгч сонгоход түрээс/менежмент/ашиглалтын тоо хэмжээг автоматаар бөглөнө. */
-  const handleSelectTenant = (tenantName: string) => {
-    setNewTenant(tenantName);
-    const tenant = findTenantByName(tenantName);
+  /**
+   * Ашиглалт + түрээс/менежментийг newTenant, newPeriod, meterStore-ээс
+   * автоматаар тооцоолно (reactive). Хэрэглэгч аль ч талбарыг гараар
+   * өөрчилсөн тохиолдолд autofill утга нь түүний оруулсан утгыг
+   * дарж бичихгүй — учир нь энэ effect зөвхөн dialog нээлттэй ба
+   * түрээслэгч/хугацаа сонгогдсон үед л дахин бөглөнө.
+   */
+  useEffect(() => {
+    if (!createOpen) return;
+    if (!newTenant) {
+      setAutoFillNote(null);
+      return;
+    }
+    const tenant = findTenantByName(newTenant);
     if (!tenant) return;
 
     const props = tenant.propertyIds
@@ -251,11 +267,19 @@ const Finance = () => {
 
     const notes: string[] = [];
     if (props.length > 0) notes.push(`${props.length} объектын түрээс/менежмент`);
-    if (cur && prv) notes.push(`${newPeriod} ашиглалт зөрүү`);
-    else if (cur) notes.push(`${newPeriod} анхны уншилт`);
-    else notes.push("ашиглалтын уншилт олдсонгүй — 0₮");
+    if (cur && prv) notes.push(`${newPeriod} ашиглалтын зөрүү (${prev} → ${newPeriod})`);
+    else if (cur) notes.push(`${newPeriod} анхны уншилт (өмнөх сар алга)`);
+    else notes.push(`${newPeriod} сард ашиглалтын уншилт олдсонгүй — 0₮`);
     setAutoFillNote(notes.join(" • "));
-  };
+  }, [createOpen, newTenant, newPeriod, meterStore]);
+
+  /** Dialog нээгдэх үед period-ийг store-той уялдуулна */
+  useEffect(() => {
+    if (createOpen) {
+      setNewPeriod(latestStorePeriod);
+    }
+  }, [createOpen, latestStorePeriod]);
+
 
   const handleCreateInvoice = () => {
     const rent = Number(newRent) || 0;
@@ -623,19 +647,35 @@ const Finance = () => {
       </Dialog>
 
       {/* Create Invoice Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) {
+            // Dialog хаагдахад state-г reset хийнэ
+            setNewTenant("");
+            setNewRent("");
+            setNewMgmt("");
+            setNewUtil("");
+            setAutoFillNote(null);
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5 text-primary" />
               Нэхэмжлэх үүсгэх
             </DialogTitle>
+            <DialogDescription>
+              Түрээслэгч болон хугацаа сонгоход түрээс, менежмент, ашиглалтын дүн автоматаар бөглөгдөнө.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Түрээслэгч</Label>
-                <Select value={newTenant} onValueChange={handleSelectTenant}>
+                <Select value={newTenant} onValueChange={setNewTenant}>
                   <SelectTrigger>
                     <SelectValue placeholder="Түрээслэгч сонгох" />
                   </SelectTrigger>
@@ -651,13 +691,11 @@ const Finance = () => {
                 <Input
                   type="month"
                   value={newPeriod}
-                  onChange={(e) => {
-                    setNewPeriod(e.target.value);
-                    if (newTenant) handleSelectTenant(newTenant);
-                  }}
+                  onChange={(e) => setNewPeriod(e.target.value)}
                 />
               </div>
             </div>
+
 
             {autoFillNote && (
               <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs text-foreground">
@@ -701,6 +739,9 @@ const Finance = () => {
               <Send className="h-5 w-5 text-primary" />
               {sendDone ? "Илгээж дуусгалаа" : "Нэхэмжлэх илгээж байна..."}
             </DialogTitle>
+            <DialogDescription>
+              Илгээхэд бэлэн нэхэмжлэхүүдийг дараалан илгээж байна.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex justify-between text-sm">
