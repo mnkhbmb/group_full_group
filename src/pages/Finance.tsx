@@ -200,7 +200,12 @@ const Finance = () => {
   const [newRent, setNewRent] = useState("");
   const [newMgmt, setNewMgmt] = useState("");
   const [newUtil, setNewUtil] = useState("");
-  const [newPeriod, setNewPeriod] = useState(() => new Date().toISOString().slice(0, 7));
+  /** Default period: meter store-д байгаа хамгийн сүүлийн сар (өгөгдөлтэй) */
+  const latestStorePeriod = useMemo(() => {
+    const keys = Object.keys(meterStore).sort();
+    return keys.length > 0 ? keys[keys.length - 1] : new Date().toISOString().slice(0, 7);
+  }, [meterStore]);
+  const [newPeriod, setNewPeriod] = useState<string>(latestStorePeriod);
   const [autoFillNote, setAutoFillNote] = useState<string | null>(null);
 
   // Send-all progress state
