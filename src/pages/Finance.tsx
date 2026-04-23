@@ -222,19 +222,51 @@ const Finance = () => {
     });
   }, [invoices, searchQuery]);
 
+  /** Түрээслэгч сонгоход түрээс/менежмент/ашиглалтын тоо хэмжээг автоматаар бөглөнө. */
+  const handleSelectTenant = (tenantName: string) => {
+    setNewTenant(tenantName);
+    const tenant = findTenantByName(tenantName);
+    if (!tenant) return;
+
+    const props = tenant.propertyIds
+      .map((id) => propertyData.find((p) => p.id === id))
+      .filter(Boolean) as typeof propertyData;
+
+    // Түрээс + менежмент = property data-аас
+    const rentSum = props.reduce((s, p) => s + p.rentalAmount, 0);
+    const mgmtSum = props.reduce((s, p) => s + p.managementFeePerSqm * p.areaSize, 0);
+
+    // Ашиглалт = (тухайн сар - өмнөх сар) × тариф (meter store-оос)
+    const prev = previousMonth(newPeriod);
+    const cur = initialMeterStore[tenant.id]?.[newPeriod];
+    const prv = initialMeterStore[tenant.id]?.[prev];
+    const usage = calcConsumption(cur, prv);
+    const utilSum = calcUtilityCost(usage);
+
+    setNewRent(String(rentSum));
+    setNewMgmt(String(mgmtSum));
+    setNewUtil(String(Math.round(utilSum)));
+
+    const notes: string[] = [];
+    if (props.length > 0) notes.push(`${props.length} объектын түрээс/менежмент`);
+    if (cur && prv) notes.push(`${newPeriod} ашиглалт зөрүү`);
+    else if (cur) notes.push(`${newPeriod} анхны уншилт`);
+    else notes.push("ашиглалтын уншилт олдсонгүй — 0₮");
+    setAutoFillNote(notes.join(" • "));
+  };
+
   const handleCreateInvoice = () => {
     const rent = Number(newRent) || 0;
     const mgmt = Number(newMgmt) || 0;
     const util = Number(newUtil) || 0;
     if (!newTenant || (rent + mgmt + util) === 0) return;
 
-    const period = new Date().toISOString().slice(0, 7);
     const newReady: ReadyInvoice = {
       id: `INV-${String(Math.floor(Math.random() * 9000) + 1000)}`,
       tenant: newTenant,
       amount: rent + mgmt + util,
       breakdown: { rent, management: mgmt, utility: util },
-      period,
+      period: newPeriod,
     };
     setReadyInvoices((prev) => [newReady, ...prev]);
     setCreateOpen(false);
@@ -242,6 +274,7 @@ const Finance = () => {
     setNewRent("");
     setNewMgmt("");
     setNewUtil("");
+    setAutoFillNote(null);
   };
 
   const handleSendAll = () => {
