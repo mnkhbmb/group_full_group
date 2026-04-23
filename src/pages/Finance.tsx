@@ -630,19 +630,39 @@ const Finance = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Түрээслэгч</Label>
-              <Select value={newTenant} onValueChange={setNewTenant}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Түрээслэгч сонгох" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tenantNames.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Түрээслэгч</Label>
+                <Select value={newTenant} onValueChange={handleSelectTenant}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Түрээслэгч сонгох" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenantNames.map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Хугацаа</Label>
+                <Input
+                  type="month"
+                  value={newPeriod}
+                  onChange={(e) => {
+                    setNewPeriod(e.target.value);
+                    if (newTenant) handleSelectTenant(newTenant);
+                  }}
+                />
+              </div>
             </div>
+
+            {autoFillNote && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs text-foreground">
+                <span className="font-medium text-primary">Автомат бөглөгдсөн:</span> {autoFillNote}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Түрээсийн төлбөр (₮)</Label>
               <Input type="number" value={newRent} onChange={(e) => setNewRent(e.target.value)} placeholder="0" />
@@ -661,7 +681,7 @@ const Finance = () => {
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              Үүсгэсэн нэхэмжлэх "Илгээхэд бэлэн" хэсэгт орох ба дараа нь "Бүгдийг илгээх" товчоор илгээгдэнэ.
+              Түрээслэгч сонгоход дүн автоматаар бөглөгдөнө. Үүсгэсэн нэхэмжлэх "Илгээхэд бэлэн" хэсэгт орно.
             </p>
           </div>
           <DialogFooter>
