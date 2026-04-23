@@ -49,7 +49,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { canManageInvoices } from "@/lib/permissions";
-import { tenantList, findTenantByName } from "@/data/tenants";
+import { findTenantByName } from "@/data/tenants";
 import { propertyData, calcUtilityCost } from "@/data/properties";
 import { initialMeterStore, previousMonth, calcConsumption } from "@/data/meterReadings";
 
