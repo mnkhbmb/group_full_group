@@ -38,6 +38,7 @@ const emptyForm = {
   areaSize: "",
   rentalAmount: "",
   pricePerSqm: "",
+  managementFeePerSqm: "",
   status: "vacant" as "rented" | "vacant",
 };
 
@@ -92,6 +93,7 @@ const Property = () => {
       areaSize: String(r.areaSize),
       rentalAmount: String(r.rentalAmount),
       pricePerSqm: String(r.pricePerSqm),
+      managementFeePerSqm: String(r.managementFeePerSqm ?? 0),
       status: r.status,
     });
     setDialogOpen(true);
@@ -115,6 +117,7 @@ const Property = () => {
                 areaSize: Number(form.areaSize) || 0,
                 rentalAmount: Number(form.rentalAmount) || 0,
                 pricePerSqm: Number(form.pricePerSqm) || 0,
+                managementFeePerSqm: Number(form.managementFeePerSqm) || 0,
                 status: form.status,
               }
             : r
@@ -130,6 +133,7 @@ const Property = () => {
         areaSize: Number(form.areaSize) || 0,
         rentalAmount: Number(form.rentalAmount) || 0,
         pricePerSqm: Number(form.pricePerSqm) || 0,
+        managementFeePerSqm: Number(form.managementFeePerSqm) || 0,
         status: form.status,
         createdAt: new Date().toISOString().split("T")[0],
       };
@@ -193,6 +197,7 @@ const Property = () => {
                   <TableHead>Талбай ID</TableHead>
                   <TableHead>Хэмжээ</TableHead>
                   <TableHead>МКВ дүн</TableHead>
+                  <TableHead className="hidden lg:table-cell">Менежмент ₮/м²</TableHead>
                   <TableHead>Түрээсийн дүн</TableHead>
                   <TableHead>Төлөв</TableHead>
                   <TableHead className="text-right">Үйлдэл</TableHead>
@@ -201,7 +206,7 @@ const Property = () => {
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
                       Илэрц олдсонгүй
                     </TableCell>
                   </TableRow>
@@ -215,6 +220,7 @@ const Property = () => {
                       </TableCell>
                       <TableCell>{r.areaSize} м²</TableCell>
                       <TableCell>{formatMNT(r.pricePerSqm)}</TableCell>
+                      <TableCell className="hidden lg:table-cell">{formatMNT(r.managementFeePerSqm)}</TableCell>
                       <TableCell className="font-medium">{formatMNT(r.rentalAmount)}</TableCell>
                       <TableCell>
                         <Badge variant={r.status === "rented" ? "default" : "secondary"}>
@@ -274,6 +280,10 @@ const Property = () => {
             <div className="space-y-2">
               <Label>МКВ дүн (₮/м²)</Label>
               <Input type="number" placeholder="30000" value={form.pricePerSqm} onChange={(e) => updateField("pricePerSqm", e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Менежментийн төлбөр (₮/м²)</Label>
+              <Input type="number" placeholder="5000" value={form.managementFeePerSqm} onChange={(e) => updateField("managementFeePerSqm", e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Төлөв</Label>

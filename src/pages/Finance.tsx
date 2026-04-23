@@ -49,6 +49,9 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { canManageInvoices } from "@/lib/permissions";
+import { findTenantByName } from "@/data/tenants";
+import { propertyData, calcUtilityCost } from "@/data/properties";
+import { initialMeterStore, previousMonth, calcConsumption } from "@/data/meterReadings";
 
 const formatMNT = (v: number) => v.toLocaleString("mn-MN") + "₮";
 
@@ -194,6 +197,8 @@ const Finance = () => {
   const [newRent, setNewRent] = useState("");
   const [newMgmt, setNewMgmt] = useState("");
   const [newUtil, setNewUtil] = useState("");
+  const [newPeriod, setNewPeriod] = useState(() => new Date().toISOString().slice(0, 7));
+  const [autoFillNote, setAutoFillNote] = useState<string | null>(null);
 
   // Send-all progress state
   const [sendOpen, setSendOpen] = useState(false);
@@ -217,19 +222,51 @@ const Finance = () => {
     });
   }, [invoices, searchQuery]);
 
+  /** Түрээслэгч сонгоход түрээс/менежмент/ашиглалтын тоо хэмжээг автоматаар бөглөнө. */
+  const handleSelectTenant = (tenantName: string) => {
+    setNewTenant(tenantName);
+    const tenant = findTenantByName(tenantName);
+    if (!tenant) return;
+
+    const props = tenant.propertyIds
+      .map((id) => propertyData.find((p) => p.id === id))
+      .filter(Boolean) as typeof propertyData;
+
+    // Түрээс + менежмент = property data-аас
+    const rentSum = props.reduce((s, p) => s + p.rentalAmount, 0);
+    const mgmtSum = props.reduce((s, p) => s + p.managementFeePerSqm * p.areaSize, 0);
+
+    // Ашиглалт = (тухайн сар - өмнөх сар) × тариф (meter store-оос)
+    const prev = previousMonth(newPeriod);
+    const cur = initialMeterStore[tenant.id]?.[newPeriod];
+    const prv = initialMeterStore[tenant.id]?.[prev];
+    const usage = calcConsumption(cur, prv);
+    const utilSum = calcUtilityCost(usage);
+
+    setNewRent(String(rentSum));
+    setNewMgmt(String(mgmtSum));
+    setNewUtil(String(Math.round(utilSum)));
+
+    const notes: string[] = [];
+    if (props.length > 0) notes.push(`${props.length} объектын түрээс/менежмент`);
+    if (cur && prv) notes.push(`${newPeriod} ашиглалт зөрүү`);
+    else if (cur) notes.push(`${newPeriod} анхны уншилт`);
+    else notes.push("ашиглалтын уншилт олдсонгүй — 0₮");
+    setAutoFillNote(notes.join(" • "));
+  };
+
   const handleCreateInvoice = () => {
     const rent = Number(newRent) || 0;
     const mgmt = Number(newMgmt) || 0;
     const util = Number(newUtil) || 0;
     if (!newTenant || (rent + mgmt + util) === 0) return;
 
-    const period = new Date().toISOString().slice(0, 7);
     const newReady: ReadyInvoice = {
       id: `INV-${String(Math.floor(Math.random() * 9000) + 1000)}`,
       tenant: newTenant,
       amount: rent + mgmt + util,
       breakdown: { rent, management: mgmt, utility: util },
-      period,
+      period: newPeriod,
     };
     setReadyInvoices((prev) => [newReady, ...prev]);
     setCreateOpen(false);
@@ -237,6 +274,7 @@ const Finance = () => {
     setNewRent("");
     setNewMgmt("");
     setNewUtil("");
+    setAutoFillNote(null);
   };
 
   const handleSendAll = () => {
@@ -592,19 +630,39 @@ const Finance = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Түрээслэгч</Label>
-              <Select value={newTenant} onValueChange={setNewTenant}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Түрээслэгч сонгох" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tenantNames.map((t) => (
-                    <SelectItem key={t} value={t}>{t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Түрээслэгч</Label>
+                <Select value={newTenant} onValueChange={handleSelectTenant}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Түрээслэгч сонгох" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenantNames.map((t) => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Хугацаа</Label>
+                <Input
+                  type="month"
+                  value={newPeriod}
+                  onChange={(e) => {
+                    setNewPeriod(e.target.value);
+                    if (newTenant) handleSelectTenant(newTenant);
+                  }}
+                />
+              </div>
             </div>
+
+            {autoFillNote && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs text-foreground">
+                <span className="font-medium text-primary">Автомат бөглөгдсөн:</span> {autoFillNote}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Түрээсийн төлбөр (₮)</Label>
               <Input type="number" value={newRent} onChange={(e) => setNewRent(e.target.value)} placeholder="0" />
@@ -623,7 +681,7 @@ const Finance = () => {
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              Үүсгэсэн нэхэмжлэх "Илгээхэд бэлэн" хэсэгт орох ба дараа нь "Бүгдийг илгээх" товчоор илгээгдэнэ.
+              Түрээслэгч сонгоход дүн автоматаар бөглөгдөнө. Үүсгэсэн нэхэмжлэх "Илгээхэд бэлэн" хэсэгт орно.
             </p>
           </div>
           <DialogFooter>
