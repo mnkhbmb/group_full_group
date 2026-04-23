@@ -66,7 +66,7 @@ const Operations = () => {
   const canRecord = canRecordMeters(user?.role);
 
   const [selectedMonth, setSelectedMonth] = useState("2024-07");
-  const [readings, setReadings] = useState<MeterStore>(initialMeterStore);
+  const { store: readings, setReading } = useMeterStore();
   const [dialogTenant, setDialogTenant] = useState<TenantInfo | null>(null);
   const [form, setForm] = useState<MeterReading>({ hotWater: 0, coldWater: 0, heating: 0, electricity: 0 });
 
@@ -119,13 +119,7 @@ const Operations = () => {
 
   const saveReading = () => {
     if (!dialogTenant) return;
-    setReadings((prev) => ({
-      ...prev,
-      [selectedMonth]: {
-        ...(prev[selectedMonth] || {}),
-        [dialogTenant.id]: form,
-      },
-    }));
+    setReading(dialogTenant.id, selectedMonth, form);
     toast({
       title: "Хадгаллаа",
       description: `${dialogTenant.name} — ${selectedMonth}: ашиглалтын төлбөр ${formatMNT(dialogCost)}`,
