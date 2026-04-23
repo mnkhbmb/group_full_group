@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Wrench, Plus, Droplets, Flame, Zap, Thermometer } from "lucide-react";
+import { Wrench, Plus, Droplets, Flame, Zap, Thermometer, Calculator } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -30,72 +31,90 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { canRecordMeters } from "@/lib/permissions";
 import { toast } from "@/hooks/use-toast";
+import { tenantList, type TenantInfo } from "@/data/tenants";
+import { propertyData, utilityRates, calcUtilityCost } from "@/data/properties";
+import {
+  initialMeterStore,
+  previousMonth,
+  calcConsumption,
+  type MeterReading,
+  type MeterStore,
+} from "@/data/meterReadings";
 
-interface Tenant {
-  id: string;
-  name: string;
-  object: string;
-  area: number;
-}
-
-interface MeterReading {
-  hotWater: number; // m³
-  coldWater: number; // m³
-  heating: number; // m³
-  electricity: number; // kWh
-}
-
-const tenants: Tenant[] = [
-  { id: "T-01", name: "Бат Дорж", object: "Скай Тауэр", area: 85 },
-  { id: "T-02", name: "Болд Сүхбат", object: "Блү Мон Тауэр", area: 120 },
-  { id: "T-03", name: "Ган Тулга", object: "Сэнтрал Тауэр", area: 200 },
-  { id: "T-04", name: "Нар Мандах", object: "Шангри-Ла Молл", area: 45 },
-  { id: "T-05", name: "Оюун Эрдэнэ", object: "Их Монгол Тауэр", area: 150 },
-];
+const formatMNT = (v: number) => Math.round(v).toLocaleString("mn-MN") + "₮";
 
 const months = [
   { value: "2024-04", label: "2024 оны 4-р сар" },
   { value: "2024-05", label: "2024 оны 5-р сар" },
   { value: "2024-06", label: "2024 оны 6-р сар" },
   { value: "2024-07", label: "2024 оны 7-р сар" },
+  { value: "2024-08", label: "2024 оны 8-р сар" },
 ];
 
-const seedReadings: Record<string, Record<string, MeterReading>> = {
-  "2024-06": {
-    "T-01": { hotWater: 4.2, coldWater: 6.5, heating: 12.0, electricity: 320 },
-    "T-02": { hotWater: 6.0, coldWater: 9.1, heating: 18.5, electricity: 480 },
-    "T-03": { hotWater: 9.5, coldWater: 14.2, heating: 28.0, electricity: 720 },
-  },
-};
+function tenantPropertySummary(t: TenantInfo): { object: string; area: number } {
+  const props = t.propertyIds
+    .map((id) => propertyData.find((p) => p.id === id))
+    .filter(Boolean) as typeof propertyData;
+  if (props.length === 0) return { object: "—", area: 0 };
+  return {
+    object: props.map((p) => p.objectName).join(", "),
+    area: props.reduce((s, p) => s + p.areaSize, 0),
+  };
+}
 
 const Operations = () => {
   const { user } = useAuth();
   const canRecord = canRecordMeters(user?.role);
 
   const [selectedMonth, setSelectedMonth] = useState("2024-07");
-  const [readings, setReadings] = useState<Record<string, Record<string, MeterReading>>>(seedReadings);
-  const [dialogTenant, setDialogTenant] = useState<Tenant | null>(null);
+  const [readings, setReadings] = useState<MeterStore>(initialMeterStore);
+  const [dialogTenant, setDialogTenant] = useState<TenantInfo | null>(null);
   const [form, setForm] = useState<MeterReading>({ hotWater: 0, coldWater: 0, heating: 0, electricity: 0 });
 
   const monthReadings = readings[selectedMonth] || {};
+  const prevPeriod = previousMonth(selectedMonth);
+
+  /** Тухайн саранд тооцоологдсон зарцуулалт + үнэ */
+  const consumptionByTenant = useMemo(() => {
+    const out: Record<
+      string,
+      { usage: ReturnType<typeof calcConsumption>; cost: number; hasReading: boolean }
+    > = {};
+    for (const t of tenantList) {
+      const cur = monthReadings[t.id];
+      const prev = readings[prevPeriod]?.[t.id];
+      const usage = calcConsumption(cur, prev);
+      out[t.id] = {
+        usage,
+        cost: calcUtilityCost(usage),
+        hasReading: !!cur,
+      };
+    }
+    return out;
+  }, [monthReadings, readings, prevPeriod]);
 
   const totals = useMemo(() => {
-    return Object.values(monthReadings).reduce(
+    return Object.values(consumptionByTenant).reduce(
       (acc, r) => ({
-        hotWater: acc.hotWater + r.hotWater,
-        coldWater: acc.coldWater + r.coldWater,
-        heating: acc.heating + r.heating,
-        electricity: acc.electricity + r.electricity,
+        hotWater: acc.hotWater + r.usage.hotWater,
+        coldWater: acc.coldWater + r.usage.coldWater,
+        heating: acc.heating + r.usage.heating,
+        electricity: acc.electricity + r.usage.electricity,
+        cost: acc.cost + r.cost,
       }),
-      { hotWater: 0, coldWater: 0, heating: 0, electricity: 0 },
+      { hotWater: 0, coldWater: 0, heating: 0, electricity: 0, cost: 0 },
     );
-  }, [monthReadings]);
+  }, [consumptionByTenant]);
 
-  const openDialog = (tenant: Tenant) => {
+  const openDialog = (tenant: TenantInfo) => {
     const existing = monthReadings[tenant.id];
     setForm(existing || { hotWater: 0, coldWater: 0, heating: 0, electricity: 0 });
     setDialogTenant(tenant);
   };
+
+  const dialogPrev = dialogTenant ? readings[prevPeriod]?.[dialogTenant.id] : undefined;
+  const dialogConsumption = dialogTenant ? calcConsumption(form, dialogPrev) : null;
+  const dialogCost = dialogConsumption ? calcUtilityCost(dialogConsumption) : 0;
 
   const saveReading = () => {
     if (!dialogTenant) return;
@@ -108,7 +127,7 @@ const Operations = () => {
     }));
     toast({
       title: "Хадгаллаа",
-      description: `${dialogTenant.name} — ${selectedMonth} сарын хэмжүүр бүртгэгдлээ.`,
+      description: `${dialogTenant.name} — ${selectedMonth}: ашиглалтын төлбөр ${formatMNT(dialogCost)}`,
     });
     setDialogTenant(null);
   };
@@ -122,7 +141,7 @@ const Operations = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Ашиглалт</h1>
             <p className="text-sm text-muted-foreground">
-              Түрээслэгчийн сарын хэмжүүрийн бүртгэл
+              Хэмжүүрийн уншилт → өмнөх сартай харьцуулан зөрүү бодно
               {!canRecord && " • Зөвхөн уншина"}
             </p>
           </div>
@@ -142,8 +161,26 @@ const Operations = () => {
         </div>
       </div>
 
+      {/* Tariff card */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Calculator className="h-4 w-4 text-primary" />
+            Нэгж тариф
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="flex items-center gap-2"><Flame className="h-3.5 w-3.5 text-orange-500" /> Халуун ус: <span className="font-medium">{formatMNT(utilityRates.hotWater)}/м³</span></div>
+            <div className="flex items-center gap-2"><Droplets className="h-3.5 w-3.5 text-blue-500" /> Хүйтэн ус: <span className="font-medium">{formatMNT(utilityRates.coldWater)}/м³</span></div>
+            <div className="flex items-center gap-2"><Thermometer className="h-3.5 w-3.5 text-red-500" /> Халаалт: <span className="font-medium">{formatMNT(utilityRates.heating)}/м³</span></div>
+            <div className="flex items-center gap-2"><Zap className="h-3.5 w-3.5 text-yellow-500" /> Цахилгаан: <span className="font-medium">{formatMNT(utilityRates.electricity)}/kWh</span></div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Totals KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-xs font-medium text-muted-foreground">Халуун ус</CardTitle>
@@ -151,7 +188,7 @@ const Operations = () => {
           </CardHeader>
           <CardContent>
             <div className="text-xl font-bold">{totals.hotWater.toFixed(1)} м³</div>
-            <p className="text-xs text-muted-foreground mt-1">Нийт хэрэглээ</p>
+            <p className="text-xs text-muted-foreground mt-1">Сарын зарцуулалт</p>
           </CardContent>
         </Card>
         <Card>
@@ -161,7 +198,7 @@ const Operations = () => {
           </CardHeader>
           <CardContent>
             <div className="text-xl font-bold">{totals.coldWater.toFixed(1)} м³</div>
-            <p className="text-xs text-muted-foreground mt-1">Нийт хэрэглээ</p>
+            <p className="text-xs text-muted-foreground mt-1">Сарын зарцуулалт</p>
           </CardContent>
         </Card>
         <Card>
@@ -171,7 +208,7 @@ const Operations = () => {
           </CardHeader>
           <CardContent>
             <div className="text-xl font-bold">{totals.heating.toFixed(1)} м³</div>
-            <p className="text-xs text-muted-foreground mt-1">Нийт хэрэглээ</p>
+            <p className="text-xs text-muted-foreground mt-1">Сарын зарцуулалт</p>
           </CardContent>
         </Card>
         <Card>
@@ -181,7 +218,17 @@ const Operations = () => {
           </CardHeader>
           <CardContent>
             <div className="text-xl font-bold">{totals.electricity.toFixed(0)} kWh</div>
-            <p className="text-xs text-muted-foreground mt-1">Нийт хэрэглээ</p>
+            <p className="text-xs text-muted-foreground mt-1">Сарын зарцуулалт</p>
+          </CardContent>
+        </Card>
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-xs font-medium text-muted-foreground">Нийт төлбөр</CardTitle>
+            <Calculator className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold text-primary">{formatMNT(totals.cost)}</div>
+            <p className="text-xs text-muted-foreground mt-1">Тариф × зарцуулалт</p>
           </CardContent>
         </Card>
       </div>
@@ -192,52 +239,68 @@ const Operations = () => {
           <CardTitle className="text-base">Түрээслэгчийн жагсаалт</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Түрээслэгч</TableHead>
-                <TableHead className="hidden sm:table-cell">Объект</TableHead>
-                <TableHead className="text-right hidden sm:table-cell">Талбай (м²)</TableHead>
-                <TableHead className="text-right">Халуун ус</TableHead>
-                <TableHead className="text-right">Хүйтэн ус</TableHead>
-                <TableHead className="text-right hidden md:table-cell">Халаалт</TableHead>
-                <TableHead className="text-right">Цахилгаан</TableHead>
-                <TableHead className="text-center">Үйлдэл</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tenants.map((t) => {
-                const r = monthReadings[t.id];
-                return (
-                  <TableRow key={t.id}>
-                    <TableCell className="font-medium">{t.name}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground">{t.object}</TableCell>
-                    <TableCell className="text-right hidden sm:table-cell text-muted-foreground">{t.area}</TableCell>
-                    <TableCell className="text-right">{r ? `${r.hotWater} м³` : <span className="text-muted-foreground">—</span>}</TableCell>
-                    <TableCell className="text-right">{r ? `${r.coldWater} м³` : <span className="text-muted-foreground">—</span>}</TableCell>
-                    <TableCell className="text-right hidden md:table-cell">{r ? `${r.heating} м³` : <span className="text-muted-foreground">—</span>}</TableCell>
-                    <TableCell className="text-right">{r ? `${r.electricity} kWh` : <span className="text-muted-foreground">—</span>}</TableCell>
-                    <TableCell className="text-center">
-                      {canRecord ? (
-                        <Button variant="ghost" size="sm" onClick={() => openDialog(t)} className="gap-1">
-                          <Plus className="h-3.5 w-3.5" />
-                          {r ? "Засах" : "Бүртгэх"}
-                        </Button>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">Уншина</Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Түрээслэгч</TableHead>
+                  <TableHead className="hidden lg:table-cell">Объект</TableHead>
+                  <TableHead className="text-right">Халуун ус</TableHead>
+                  <TableHead className="text-right">Хүйтэн ус</TableHead>
+                  <TableHead className="text-right hidden md:table-cell">Халаалт</TableHead>
+                  <TableHead className="text-right">Цахилгаан</TableHead>
+                  <TableHead className="text-right">Төлбөр</TableHead>
+                  <TableHead className="text-center">Үйлдэл</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tenantList.map((t) => {
+                  const summary = tenantPropertySummary(t);
+                  const c = consumptionByTenant[t.id];
+                  return (
+                    <TableRow key={t.id}>
+                      <TableCell>
+                        <div className="font-medium">{t.name}</div>
+                        <div className="text-xs text-muted-foreground lg:hidden">{summary.object}</div>
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell text-muted-foreground">{summary.object}</TableCell>
+                      <TableCell className="text-right">
+                        {c.hasReading ? `${c.usage.hotWater.toFixed(1)} м³` : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {c.hasReading ? `${c.usage.coldWater.toFixed(1)} м³` : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-right hidden md:table-cell">
+                        {c.hasReading ? `${c.usage.heating.toFixed(1)} м³` : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {c.hasReading ? `${c.usage.electricity.toFixed(0)} kWh` : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {c.hasReading ? formatMNT(c.cost) : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {canRecord ? (
+                          <Button variant="ghost" size="sm" onClick={() => openDialog(t)} className="gap-1">
+                            <Plus className="h-3.5 w-3.5" />
+                            {c.hasReading ? "Засах" : "Бүртгэх"}
+                          </Button>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">Уншина</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
       {/* Reading dialog */}
       <Dialog open={!!dialogTenant} onOpenChange={(open) => !open && setDialogTenant(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Хэмжүүр бүртгэх — {dialogTenant?.name}
@@ -245,8 +308,26 @@ const Operations = () => {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              {months.find((m) => m.value === selectedMonth)?.label}
+              {months.find((m) => m.value === selectedMonth)?.label} • Хэмжүүрийн нийт уншилтыг (cumulative) оруулна уу
             </p>
+
+            {dialogPrev && (
+              <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
+                <div className="font-medium text-foreground">Өмнөх сарын уншилт ({prevPeriod}):</div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
+                  <span>Халуун ус: {dialogPrev.hotWater} м³</span>
+                  <span>Хүйтэн ус: {dialogPrev.coldWater} м³</span>
+                  <span>Халаалт: {dialogPrev.heating} м³</span>
+                  <span>Цахилгаан: {dialogPrev.electricity} kWh</span>
+                </div>
+              </div>
+            )}
+            {!dialogPrev && (
+              <div className="rounded-md border border-dashed p-3 text-xs text-muted-foreground">
+                Өмнөх сарын уншилт олдсонгүй — оруулсан утгыг бүхэлд нь зарцуулалт гэж тооцоолно.
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="flex items-center gap-1.5"><Flame className="h-3.5 w-3.5 text-orange-500" /> Халуун ус (м³)</Label>
@@ -285,6 +366,34 @@ const Operations = () => {
                 />
               </div>
             </div>
+
+            {/* Auto-calc preview */}
+            {dialogConsumption && (
+              <>
+                <Separator />
+                <div className="rounded-md border bg-primary/5 p-3 space-y-2">
+                  <div className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                    <Calculator className="h-3.5 w-3.5 text-primary" />
+                    Автомат тооцоолол (зөрүү × тариф)
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                    <span className="text-muted-foreground">Халуун ус: {dialogConsumption.hotWater.toFixed(1)} м³</span>
+                    <span className="text-right">{formatMNT(dialogConsumption.hotWater * utilityRates.hotWater)}</span>
+                    <span className="text-muted-foreground">Хүйтэн ус: {dialogConsumption.coldWater.toFixed(1)} м³</span>
+                    <span className="text-right">{formatMNT(dialogConsumption.coldWater * utilityRates.coldWater)}</span>
+                    <span className="text-muted-foreground">Халаалт: {dialogConsumption.heating.toFixed(1)} м³</span>
+                    <span className="text-right">{formatMNT(dialogConsumption.heating * utilityRates.heating)}</span>
+                    <span className="text-muted-foreground">Цахилгаан: {dialogConsumption.electricity.toFixed(0)} kWh</span>
+                    <span className="text-right">{formatMNT(dialogConsumption.electricity * utilityRates.electricity)}</span>
+                  </div>
+                  <Separator />
+                  <div className="flex justify-between text-sm font-semibold">
+                    <span>Нийт ашиглалтын төлбөр</span>
+                    <span className="text-primary">{formatMNT(dialogCost)}</span>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogTenant(null)}>Цуцлах</Button>
