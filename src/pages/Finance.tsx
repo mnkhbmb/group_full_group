@@ -51,7 +51,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { canManageInvoices } from "@/lib/permissions";
 import { findTenantByName } from "@/data/tenants";
 import { propertyData, calcUtilityCost } from "@/data/properties";
-import { initialMeterStore, previousMonth, calcConsumption } from "@/data/meterReadings";
+import { previousMonth, calcConsumption } from "@/data/meterReadings";
+import { useMeterStore } from "@/data/meterStore";
 
 const formatMNT = (v: number) => v.toLocaleString("mn-MN") + "₮";
 
@@ -184,6 +185,7 @@ function PaymentBreakdownBars({ breakdown, paidBreakdown }: { breakdown: Invoice
 const Finance = () => {
   const { user } = useAuth();
   const canManage = canManageInvoices(user?.role);
+  const { store: meterStore } = useMeterStore();
 
   const [invoicesOpen, setInvoicesOpen] = useState(true);
   const [readyOpen, setReadyOpen] = useState(true);
@@ -238,8 +240,8 @@ const Finance = () => {
 
     // Ашиглалт = (тухайн сар - өмнөх сар) × тариф (meter store-оос)
     const prev = previousMonth(newPeriod);
-    const cur = initialMeterStore[tenant.id]?.[newPeriod];
-    const prv = initialMeterStore[tenant.id]?.[prev];
+    const cur = meterStore[newPeriod]?.[tenant.id];
+    const prv = meterStore[prev]?.[tenant.id];
     const usage = calcConsumption(cur, prv);
     const utilSum = calcUtilityCost(usage);
 
