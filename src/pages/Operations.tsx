@@ -71,11 +71,11 @@ const Operations = () => {
   const [dialogTenant, setDialogTenant] = useState<TenantInfo | null>(null);
   const [form, setForm] = useState<MeterReading>({ hotWater: 0, coldWater: 0, heating: 0, electricity: 0 });
 
-  const monthReadings = readings[selectedMonth] || {};
   const prevPeriod = previousMonth(selectedMonth);
 
   /** Тухайн саранд тооцоологдсон зарцуулалт + үнэ */
   const consumptionByTenant = useMemo(() => {
+    const monthReadings = readings[selectedMonth] || {};
     const out: Record<
       string,
       { usage: ReturnType<typeof calcConsumption>; cost: number; hasReading: boolean }
@@ -91,7 +91,9 @@ const Operations = () => {
       };
     }
     return out;
-  }, [monthReadings, readings, prevPeriod]);
+  }, [readings, selectedMonth, prevPeriod]);
+
+  const monthReadings = readings[selectedMonth] || {};
 
   const totals = useMemo(() => {
     return Object.values(consumptionByTenant).reduce(
