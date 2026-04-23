@@ -1,9 +1,21 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
+export type AppRole =
+  | "admin"
+  | "general_manager"
+  | "sales_manager"
+  | "engineer"
+  | "accountant"
+  | "user";
+
 interface User {
   email: string;
   name: string;
-  role: string;
+  role: AppRole;
+}
+
+interface StoredUser extends User {
+  password: string;
 }
 
 interface AuthContextType {
@@ -16,21 +28,36 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const ADMIN_USER = { email: "admin", password: "pass123$", name: "Админ", role: "admin" };
+const DEMO_USERS: StoredUser[] = [
+  { email: "admin", password: "pass123$", name: "Админ", role: "admin" },
+  { email: "gm", password: "pass123$", name: "Б.Энхбат", role: "general_manager" },
+  { email: "sales", password: "pass123$", name: "Г.Сараа", role: "sales_manager" },
+  { email: "engineer", password: "pass123$", name: "Д.Тэмүүлэн", role: "engineer" },
+  { email: "accountant", password: "pass123$", name: "О.Дэлгэрмаа", role: "accountant" },
+];
+
+export const ROLE_LABELS: Record<AppRole, string> = {
+  admin: "Админ",
+  general_manager: "Ерөнхий менежер",
+  sales_manager: "Борлуулалт/Түрээсийн менежер",
+  engineer: "Ашиглалтын инженер",
+  accountant: "Нягтлан",
+  user: "Хэрэглэгч",
+};
+
 const STORAGE_KEY = "pm_users";
 const SESSION_KEY = "pm_session";
 
-function getStoredUsers(): Array<{ email: string; password: string; name: string; role: string }> {
+function getStoredUsers(): StoredUser[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [ADMIN_USER];
-    const users = JSON.parse(raw);
-    if (!users.find((u: any) => u.email === ADMIN_USER.email)) {
-      users.push(ADMIN_USER);
-    }
-    return users;
+    const extra: StoredUser[] = raw ? JSON.parse(raw) : [];
+    // Merge demo users (always present), avoid dupes by email
+    const map = new Map<string, StoredUser>();
+    [...DEMO_USERS, ...extra].forEach((u) => map.set(u.email, u));
+    return Array.from(map.values());
   } catch {
-    return [ADMIN_USER];
+    return [...DEMO_USERS];
   }
 }
 
@@ -48,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const users = getStoredUsers();
     const found = users.find((u) => u.email === email && u.password === password);
     if (!found) return false;
-    const userData = { email: found.email, name: found.name, role: found.role };
+    const userData: User = { email: found.email, name: found.name, role: found.role };
     setUser(userData);
     localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
     return true;
@@ -57,10 +84,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = (email: string, password: string, name: string): boolean => {
     const users = getStoredUsers();
     if (users.find((u) => u.email === email)) return false;
-    const newUser = { email, password, name, role: "user" };
-    users.push(newUser);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-    const userData = { email, name, role: "user" };
+    const newUser: StoredUser = { email, password, name, role: "user" };
+    // Persist only non-demo users
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const extra: StoredUser[] = raw ? JSON.parse(raw) : [];
+    extra.push(newUser);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(extra));
+    const userData: User = { email, name, role: "user" };
     setUser(userData);
     localStorage.setItem(SESSION_KEY, JSON.stringify(userData));
     return true;

@@ -11,6 +11,7 @@ import {
   Plus,
   Search,
   Printer,
+  Send,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAuth } from "@/contexts/AuthContext";
+import { canManageInvoices } from "@/lib/permissions";
 
 const formatMNT = (v: number) => v.toLocaleString("mn-MN") + "₮";
 
@@ -66,6 +69,14 @@ interface SentInvoice {
   paidBreakdown?: InvoiceBreakdown;
 }
 
+interface ReadyInvoice {
+  id: string;
+  tenant: string;
+  amount: number;
+  breakdown: InvoiceBreakdown;
+  period: string;
+}
+
 interface MiniStat {
   title: string;
   value: string | number;
@@ -78,15 +89,11 @@ interface MiniStat {
 /** Төлсөн дүнг түрээс → менежмент → ашиглалт дарааллаар суутган тооцоолно */
 function computePaidBreakdown(paidAmount: number, breakdown: InvoiceBreakdown): InvoiceBreakdown {
   let remaining = paidAmount;
-
   const rentPaid = Math.min(remaining, breakdown.rent);
   remaining -= rentPaid;
-
   const mgmtPaid = Math.min(remaining, breakdown.management);
   remaining -= mgmtPaid;
-
   const utilPaid = Math.min(remaining, breakdown.utility);
-
   return { rent: rentPaid, management: mgmtPaid, utility: utilPaid };
 }
 
@@ -97,15 +104,7 @@ const kpiData: MiniStat[] = [
   { title: "Хугацаа хэтэрсэн", value: 7, subtitle: "Нийт дүн: 4.1 сая₮", icon: Clock, color: "text-orange-500" },
 ];
 
-interface ReadyInvoice {
-  id: string;
-  tenant: string;
-  amount: number;
-  breakdown: InvoiceBreakdown;
-  period: string;
-}
-
-const readyInvoices: ReadyInvoice[] = [
+const initialReady: ReadyInvoice[] = [
   { id: "INV-0120", tenant: "Бат Дорж", amount: 2550000, breakdown: { rent: 1800000, management: 450000, utility: 300000 }, period: "2024-07" },
   { id: "INV-0121", tenant: "Болд Сүхбат", amount: 4200000, breakdown: { rent: 3000000, management: 720000, utility: 480000 }, period: "2024-07" },
   { id: "INV-0122", tenant: "Ган Тулга", amount: 7000000, breakdown: { rent: 5000000, management: 1200000, utility: 800000 }, period: "2024-07" },
@@ -149,15 +148,12 @@ function fuzzyMatch(text: string, query: string): boolean {
   return qi === q.length;
 }
 
-
-/** Төлбөр тус бүрийн төлөгдсөн/үлдэгдэл progress bar */
 function PaymentBreakdownBars({ breakdown, paidBreakdown }: { breakdown: InvoiceBreakdown; paidBreakdown: InvoiceBreakdown }) {
   const items = [
     { label: "Түрээс", total: breakdown.rent, paid: paidBreakdown.rent, color: "bg-primary" },
     { label: "Менежмент", total: breakdown.management, paid: paidBreakdown.management, color: "bg-blue-500" },
     { label: "Ашиглалт", total: breakdown.utility, paid: paidBreakdown.utility, color: "bg-green-500" },
   ];
-
   return (
     <div className="space-y-3">
       {items.map((item) => {
@@ -183,17 +179,29 @@ function PaymentBreakdownBars({ breakdown, paidBreakdown }: { breakdown: Invoice
 }
 
 const Finance = () => {
+  const { user } = useAuth();
+  const canManage = canManageInvoices(user?.role);
+
   const [invoicesOpen, setInvoicesOpen] = useState(true);
   const [readyOpen, setReadyOpen] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState<SentInvoice | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [invoices, setInvoices] = useState<SentInvoice[]>(initialInvoices);
+  const [readyInvoices, setReadyInvoices] = useState<ReadyInvoice[]>(initialReady);
 
   const [newTenant, setNewTenant] = useState("");
   const [newRent, setNewRent] = useState("");
   const [newMgmt, setNewMgmt] = useState("");
   const [newUtil, setNewUtil] = useState("");
+
+  // Send-all progress state
+  const [sendOpen, setSendOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendIndex, setSendIndex] = useState(0);
+  const [sendTotal, setSendTotal] = useState(0);
+  const [currentSending, setCurrentSending] = useState<ReadyInvoice | null>(null);
+  const [sendDone, setSendDone] = useState(false);
 
   const filteredInvoices = useMemo(() => {
     if (!searchQuery.trim()) return invoices;
@@ -215,16 +223,15 @@ const Finance = () => {
     const util = Number(newUtil) || 0;
     if (!newTenant || (rent + mgmt + util) === 0) return;
 
-    const newInv: SentInvoice = {
+    const period = new Date().toISOString().slice(0, 7);
+    const newReady: ReadyInvoice = {
       id: `INV-${String(Math.floor(Math.random() * 9000) + 1000)}`,
       tenant: newTenant,
       amount: rent + mgmt + util,
-      date: new Date().toISOString().split("T")[0],
-      status: "unpaid",
       breakdown: { rent, management: mgmt, utility: util },
+      period,
     };
-
-    setInvoices((prev) => [newInv, ...prev]);
+    setReadyInvoices((prev) => [newReady, ...prev]);
     setCreateOpen(false);
     setNewTenant("");
     setNewRent("");
@@ -232,7 +239,57 @@ const Finance = () => {
     setNewUtil("");
   };
 
-  // Compute paid breakdown for selected invoice
+  const handleSendAll = () => {
+    if (readyInvoices.length === 0) return;
+    const queue = [...readyInvoices];
+    setSendTotal(queue.length);
+    setSendIndex(0);
+    setSendDone(false);
+    setSendOpen(true);
+    setSending(true);
+
+    let i = 0;
+    const today = new Date().toISOString().split("T")[0];
+
+    const tick = () => {
+      if (i >= queue.length) {
+        setSending(false);
+        setSendDone(true);
+        setCurrentSending(null);
+        return;
+      }
+      const inv = queue[i];
+      setCurrentSending(inv);
+      setSendIndex(i + 1);
+
+      // Move from ready → sent
+      setReadyInvoices((prev) => prev.filter((r) => r.id !== inv.id));
+      setInvoices((prev) => [
+        {
+          id: inv.id,
+          tenant: inv.tenant,
+          amount: inv.amount,
+          date: today,
+          status: "unpaid",
+          breakdown: inv.breakdown,
+        },
+        ...prev,
+      ]);
+
+      i++;
+      setTimeout(tick, 1000);
+    };
+
+    setTimeout(tick, 400);
+  };
+
+  const closeSendDialog = () => {
+    if (sending) return;
+    setSendOpen(false);
+    setSendDone(false);
+    setCurrentSending(null);
+  };
+
   const selectedPaidBreakdown = useMemo(() => {
     if (!selectedInvoice) return null;
     const paid = selectedInvoice.paidAmount ?? 0;
@@ -240,30 +297,33 @@ const Finance = () => {
     return computePaidBreakdown(paid, selectedInvoice.breakdown);
   }, [selectedInvoice]);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
+
+  const sendProgressPct = sendTotal > 0 ? Math.round((sendIndex / sendTotal) * 100) : 0;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
           <Receipt className="h-8 w-8 text-primary" />
           <div>
             <h1 className="text-2xl font-bold text-foreground">Санхүү бүртгэл</h1>
             <p className="text-sm text-muted-foreground">
-              Нэхэмжлэл, төлбөрийн нэгдсэн хяналт • 1-5-нд тооцоо, 5-нд илгээнэ, 20-нд сануулга
+              Нэхэмжлэл, төлбөрийн нэгдсэн хяналт
+              {!canManage && " • Зөвхөн уншина"}
             </p>
           </div>
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Нэхэмжлэх үүсгэх
-        </Button>
+        {canManage && (
+          <Button onClick={() => setCreateOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Нэхэмжлэх үүсгэх
+          </Button>
+        )}
       </div>
 
-      {/* Mini Dashboard KPIs */}
+      {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpiData.map((kpi) => (
           <Card key={kpi.title}>
@@ -301,48 +361,60 @@ const Finance = () => {
       {/* Ready to Send Invoices */}
       <Collapsible open={readyOpen} onOpenChange={setReadyOpen}>
         <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-orange-500" />
-                  Илгээхэд бэлэн нэхэмжлэхүүд
-                  <Badge variant="outline" className="text-xs">{readyInvoices.length}</Badge>
-                </CardTitle>
-                <Button variant="ghost" size="icon" className="h-6 w-6">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <CollapsibleTrigger asChild>
+                <button className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-orange-500" />
+                    Илгээхэд бэлэн нэхэмжлэхүүд
+                    <Badge variant="outline" className="text-xs">{readyInvoices.length}</Badge>
+                  </CardTitle>
                   {readyOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+              </CollapsibleTrigger>
+              {canManage && readyInvoices.length > 0 && (
+                <Button onClick={handleSendAll} size="sm" className="gap-2">
+                  <Send className="h-4 w-4" />
+                  Бүгдийг илгээх ({readyInvoices.length})
                 </Button>
-              </div>
-            </CardHeader>
-          </CollapsibleTrigger>
+              )}
+            </div>
+          </CardHeader>
           <CollapsibleContent>
             <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Дугаар</TableHead>
-                    <TableHead>Түрээслэгч</TableHead>
-                    <TableHead className="text-right">Нийт дүн</TableHead>
-                    <TableHead className="hidden sm:table-cell">Хугацаа</TableHead>
-                    <TableHead className="text-right">Түрээс</TableHead>
-                    <TableHead className="text-right hidden sm:table-cell">Менежмент</TableHead>
-                    <TableHead className="text-right hidden sm:table-cell">Ашиглалт</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {readyInvoices.map((inv) => (
-                    <TableRow key={inv.id}>
-                      <TableCell><Badge variant="outline" className="font-mono text-xs">{inv.id}</Badge></TableCell>
-                      <TableCell className="font-medium">{inv.tenant}</TableCell>
-                      <TableCell className="text-right font-medium">{formatMNT(inv.amount)}</TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground">{inv.period}</TableCell>
-                      <TableCell className="text-right text-muted-foreground">{formatMNT(inv.breakdown.rent)}</TableCell>
-                      <TableCell className="text-right text-muted-foreground hidden sm:table-cell">{formatMNT(inv.breakdown.management)}</TableCell>
-                      <TableCell className="text-right text-muted-foreground hidden sm:table-cell">{formatMNT(inv.breakdown.utility)}</TableCell>
+              {readyInvoices.length === 0 ? (
+                <div className="p-6 text-center text-sm text-muted-foreground">
+                  Илгээхэд бэлэн нэхэмжлэх алга байна.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Дугаар</TableHead>
+                      <TableHead>Түрээслэгч</TableHead>
+                      <TableHead className="text-right">Нийт дүн</TableHead>
+                      <TableHead className="hidden sm:table-cell">Хугацаа</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">Түрээс</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">Менежмент</TableHead>
+                      <TableHead className="text-right hidden sm:table-cell">Ашиглалт</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {readyInvoices.map((inv) => (
+                      <TableRow key={inv.id}>
+                        <TableCell><Badge variant="outline" className="font-mono text-xs">{inv.id}</Badge></TableCell>
+                        <TableCell className="font-medium">{inv.tenant}</TableCell>
+                        <TableCell className="text-right font-medium">{formatMNT(inv.amount)}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-muted-foreground">{inv.period}</TableCell>
+                        <TableCell className="text-right text-muted-foreground hidden sm:table-cell">{formatMNT(inv.breakdown.rent)}</TableCell>
+                        <TableCell className="text-right text-muted-foreground hidden sm:table-cell">{formatMNT(inv.breakdown.management)}</TableCell>
+                        <TableCell className="text-right text-muted-foreground hidden sm:table-cell">{formatMNT(inv.breakdown.utility)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </CollapsibleContent>
         </Card>
@@ -367,7 +439,6 @@ const Finance = () => {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent className="p-0">
-              {/* Search */}
               <div className="px-4 pb-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -475,17 +546,12 @@ const Finance = () => {
                   </div>
                 </div>
 
-                {/* Paid breakdown with priority allocation */}
                 {selectedPaidBreakdown && (
                   <>
                     <Separator />
                     <div>
-                      <h4 className="text-sm font-semibold mb-1">
-                        Төлсөн дүнгийн суутган задаргаа
-                      </h4>
-                      <p className="text-xs text-muted-foreground mb-3">
-                        Дараалал: Түрээс → Менежмент → Ашиглалт
-                      </p>
+                      <h4 className="text-sm font-semibold mb-1">Төлсөн дүнгийн суутган задаргаа</h4>
+                      <p className="text-xs text-muted-foreground mb-3">Дараалал: Түрээс → Менежмент → Ашиглалт</p>
                       <PaymentBreakdownBars
                         breakdown={selectedInvoice.breakdown}
                         paidBreakdown={selectedPaidBreakdown}
@@ -556,10 +622,56 @@ const Finance = () => {
                 Нийт: {formatMNT(Number(newRent) + Number(newMgmt) + Number(newUtil))}
               </div>
             )}
+            <p className="text-xs text-muted-foreground">
+              Үүсгэсэн нэхэмжлэх "Илгээхэд бэлэн" хэсэгт орох ба дараа нь "Бүгдийг илгээх" товчоор илгээгдэнэ.
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>Цуцлах</Button>
             <Button onClick={handleCreateInvoice}>Үүсгэх</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send-all Progress Dialog */}
+      <Dialog open={sendOpen} onOpenChange={(o) => !o && closeSendDialog()}>
+        <DialogContent className="max-w-md" onInteractOutside={(e) => sending && e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5 text-primary" />
+              {sendDone ? "Илгээж дуусгалаа" : "Нэхэмжлэх илгээж байна..."}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Явц</span>
+              <span className="font-medium">{sendIndex} / {sendTotal}</span>
+            </div>
+            <Progress value={sendProgressPct} className="h-3" />
+            <div className="text-xs text-muted-foreground text-center">{sendProgressPct}%</div>
+
+            {currentSending && !sendDone && (
+              <div className="rounded-md border bg-muted/30 p-3 space-y-1">
+                <div className="text-xs text-muted-foreground">Одоо илгээж байна:</div>
+                <div className="flex items-center justify-between text-sm">
+                  <Badge variant="outline" className="font-mono text-xs">{currentSending.id}</Badge>
+                  <span className="font-medium">{currentSending.tenant}</span>
+                  <span className="text-foreground">{formatMNT(currentSending.amount)}</span>
+                </div>
+              </div>
+            )}
+
+            {sendDone && (
+              <div className="flex items-center gap-2 text-sm text-green-600 justify-center">
+                <CheckCircle2 className="h-4 w-4" />
+                {sendTotal} нэхэмжлэх амжилттай илгээгдлээ.
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={closeSendDialog} disabled={sending}>
+              Хаах
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
