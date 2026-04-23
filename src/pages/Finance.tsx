@@ -230,10 +230,20 @@ const Finance = () => {
     });
   }, [invoices, searchQuery]);
 
-  /** Түрээслэгч сонгоход түрээс/менежмент/ашиглалтын тоо хэмжээг автоматаар бөглөнө. */
-  const handleSelectTenant = (tenantName: string) => {
-    setNewTenant(tenantName);
-    const tenant = findTenantByName(tenantName);
+  /**
+   * Ашиглалт + түрээс/менежментийг newTenant, newPeriod, meterStore-ээс
+   * автоматаар тооцоолно (reactive). Хэрэглэгч аль ч талбарыг гараар
+   * өөрчилсөн тохиолдолд autofill утга нь түүний оруулсан утгыг
+   * дарж бичихгүй — учир нь энэ effect зөвхөн dialog нээлттэй ба
+   * түрээслэгч/хугацаа сонгогдсон үед л дахин бөглөнө.
+   */
+  useEffect(() => {
+    if (!createOpen) return;
+    if (!newTenant) {
+      setAutoFillNote(null);
+      return;
+    }
+    const tenant = findTenantByName(newTenant);
     if (!tenant) return;
 
     const props = tenant.propertyIds
@@ -257,11 +267,19 @@ const Finance = () => {
 
     const notes: string[] = [];
     if (props.length > 0) notes.push(`${props.length} объектын түрээс/менежмент`);
-    if (cur && prv) notes.push(`${newPeriod} ашиглалт зөрүү`);
-    else if (cur) notes.push(`${newPeriod} анхны уншилт`);
-    else notes.push("ашиглалтын уншилт олдсонгүй — 0₮");
+    if (cur && prv) notes.push(`${newPeriod} ашиглалтын зөрүү (${prev} → ${newPeriod})`);
+    else if (cur) notes.push(`${newPeriod} анхны уншилт (өмнөх сар алга)`);
+    else notes.push(`${newPeriod} сард ашиглалтын уншилт олдсонгүй — 0₮`);
     setAutoFillNote(notes.join(" • "));
-  };
+  }, [createOpen, newTenant, newPeriod, meterStore]);
+
+  /** Dialog нээгдэх үед period-ийг store-той уялдуулна */
+  useEffect(() => {
+    if (createOpen) {
+      setNewPeriod(latestStorePeriod);
+    }
+  }, [createOpen, latestStorePeriod]);
+
 
   const handleCreateInvoice = () => {
     const rent = Number(newRent) || 0;
