@@ -185,6 +185,7 @@ function PaymentBreakdownBars({ breakdown, paidBreakdown }: { breakdown: Invoice
 const Finance = () => {
   const { user } = useAuth();
   const canManage = canManageInvoices(user?.role);
+  const { store: meterStore } = useMeterStore();
 
   const [invoicesOpen, setInvoicesOpen] = useState(true);
   const [readyOpen, setReadyOpen] = useState(true);
@@ -239,8 +240,8 @@ const Finance = () => {
 
     // Ашиглалт = (тухайн сар - өмнөх сар) × тариф (meter store-оос)
     const prev = previousMonth(newPeriod);
-    const cur = initialMeterStore[tenant.id]?.[newPeriod];
-    const prv = initialMeterStore[tenant.id]?.[prev];
+    const cur = meterStore[newPeriod]?.[tenant.id];
+    const prv = meterStore[prev]?.[tenant.id];
     const usage = calcConsumption(cur, prv);
     const utilSum = calcUtilityCost(usage);
 
