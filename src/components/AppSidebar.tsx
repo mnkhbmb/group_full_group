@@ -1,7 +1,8 @@
 import { LayoutDashboard, Building2, Receipt, Wrench, Users, User, Settings, LogOut, ChevronUp } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth, ROLE_LABELS } from "@/contexts/AuthContext";
 import { useLocation } from "react-router-dom";
+import { canAccessRoute, type RouteKey } from "@/lib/permissions";
 import {
   Sidebar,
   SidebarContent,
@@ -25,12 +26,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const menuItems = [
-  { title: "Хяналтын самбар", url: "/", icon: LayoutDashboard },
-  { title: "Хөрөнгө", url: "/property", icon: Building2 },
-  { title: "Түрээслэгч", url: "/tenants", icon: Users },
-  { title: "Санхүү бүртгэл", url: "/finance", icon: Receipt },
-  { title: "Ашиглалт", url: "/operations", icon: Wrench },
+const menuItems: { title: string; url: string; icon: typeof LayoutDashboard; key: RouteKey }[] = [
+  { title: "Хяналтын самбар", url: "/", icon: LayoutDashboard, key: "dashboard" },
+  { title: "Хөрөнгө", url: "/property", icon: Building2, key: "property" },
+  { title: "Түрээслэгч", url: "/tenants", icon: Users, key: "tenants" },
+  { title: "Санхүү бүртгэл", url: "/finance", icon: Receipt, key: "finance" },
+  { title: "Ашиглалт", url: "/operations", icon: Wrench, key: "operations" },
 ];
 
 export function AppSidebar() {
@@ -56,7 +57,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Үндсэн цэс</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => (
+              {menuItems.filter((item) => canAccessRoute(user?.role, item.key)).map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -93,7 +94,7 @@ export function AppSidebar() {
                     <div className="flex flex-1 items-center justify-between">
                       <div className="text-left">
                         <p className="text-sm font-medium leading-none">{user?.name || "Хэрэглэгч"}</p>
-                        <p className="text-xs text-muted-foreground">{user?.role === "admin" ? "Админ" : "Хэрэглэгч"}</p>
+                        <p className="text-xs text-muted-foreground">{user ? ROLE_LABELS[user.role] : "Хэрэглэгч"}</p>
                       </div>
                       <ChevronUp className="h-4 w-4 text-muted-foreground" />
                     </div>
