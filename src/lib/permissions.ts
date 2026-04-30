@@ -4,7 +4,7 @@ export type RouteKey = "dashboard" | "property" | "tenants" | "finance" | "opera
 
 /** Аль role аль route-руу нэвтрэх боломжтой */
 const ROUTE_ACCESS: Record<RouteKey, AppRole[]> = {
-  dashboard: ["admin", "general_manager", "sales_manager", "accountant"],
+  dashboard: ["admin", "general_manager", "sales_manager", "accountant", "user"],
   property: ["admin", "general_manager", "sales_manager"],
   tenants: ["admin", "general_manager", "sales_manager", "engineer", "accountant"],
   finance: ["admin", "general_manager", "accountant"],
