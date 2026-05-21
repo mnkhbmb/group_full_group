@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      const session = localStorage.getItem(SESSION_KEY);
+      const session = sessionStorage.getItem(SESSION_KEY);
       if (session) setUser(JSON.parse(session));
     } catch {}
   }, []);
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: userData.phone,
       };
       setUser(user);
-      localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(user));
       return true;
     } catch {
       return false;
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
   };
 
   return (

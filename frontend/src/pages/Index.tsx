@@ -1,81 +1,8 @@
 import { useState, useEffect } from "react";
-import { Building2, Users, FileText, DollarSign, AlertCircle, BarChart3, TrendingUp, Home, MessageSquare, CalendarClock, Bell } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-  Area,
-  AreaChart,
-} from "recharts";
+import { Building2, Users, AlertCircle, BarChart3, TrendingUp, Home, CalendarClock, Bell } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-// Mock data
-const monthlyRevenue = [
-  { month: "1-р сар", rental: 45000000, management: 8500000, utility: 12000000 },
-  { month: "2-р сар", rental: 47000000, management: 8700000, utility: 11500000 },
-  { month: "3-р сар", rental: 46500000, management: 8600000, utility: 13000000 },
-  { month: "4-р сар", rental: 48000000, management: 9000000, utility: 12500000 },
-  { month: "5-р сар", rental: 49500000, management: 9200000, utility: 11800000 },
-  { month: "6-р сар", rental: 51000000, management: 9500000, utility: 12200000 },
-];
-
-const invoiceData = [
-  { month: "1-р сар", sent: 120, paid: 105, unpaid: 15 },
-  { month: "2-р сар", sent: 125, paid: 110, unpaid: 15 },
-  { month: "3-р сар", sent: 118, paid: 100, unpaid: 18 },
-  { month: "4-р сар", sent: 130, paid: 118, unpaid: 12 },
-  { month: "5-р сар", sent: 128, paid: 115, unpaid: 13 },
-  { month: "6-р сар", sent: 135, paid: 120, unpaid: 15 },
-];
-
-const occupancyData = [
-  { name: "Түрээслэсэн", value: 78, fill: "hsl(var(--primary))" },
-  { name: "Сул", value: 22, fill: "hsl(var(--muted-foreground) / 0.3)" },
-];
-
-const feedbackData = [
-  { type: "Засвар үйлчилгээ", count: 24 },
-  { type: "Цэвэрлэгээ", count: 12 },
-  { type: "Аюулгүй байдал", count: 8 },
-  { type: "Зогсоол", count: 15 },
-  { type: "Бусад", count: 6 },
-];
-
-const revenueChartConfig: ChartConfig = {
-  rental: { label: "Түрээсийн орлого", color: "hsl(var(--primary))" },
-  management: { label: "Менежментийн орлого", color: "hsl(210 70% 50%)" },
-  utility: { label: "Ашиглалтын төлбөр", color: "hsl(150 60% 45%)" },
-};
-
-const invoiceChartConfig: ChartConfig = {
-  sent: { label: "Илгээсэн", color: "hsl(var(--primary))" },
-  paid: { label: "Төлөгдсөн", color: "hsl(150 60% 45%)" },
-  unpaid: { label: "Төлөгдөөгүй", color: "hsl(0 70% 55%)" },
-};
-
-const feedbackChartConfig: ChartConfig = {
-  count: { label: "Тоо", color: "hsl(var(--primary))" },
-};
-
-const formatMNT = (value: number) => {
-  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}сая`;
-  if (value >= 1000) return `${(value / 1000).toFixed(0)}мянга`;
-  return value.toString();
-};
+import { propertiesApi, tenantsApi } from "@/lib/api";
 
 function getInvoiceCountdown() {
   const now = new Date();
@@ -83,41 +10,18 @@ function getInvoiceCountdown() {
   const month = now.getMonth();
   const day = now.getDate();
 
-  // Next send date is the 5th. If today is after the 5th, it's next month's 5th.
-  let nextSend: Date;
-  if (day < 5) {
-    nextSend = new Date(year, month, 5);
-  } else {
-    nextSend = new Date(year, month + 1, 5);
-  }
-
-  // Next reminder is the 20th
-  let nextReminder: Date;
-  if (day < 20) {
-    nextReminder = new Date(year, month, 20);
-  } else {
-    nextReminder = new Date(year, month + 1, 20);
-  }
+  const nextSend = day < 5 ? new Date(year, month, 5) : new Date(year, month + 1, 5);
+  const nextReminder = day < 20 ? new Date(year, month, 20) : new Date(year, month + 1, 20);
 
   const diffSend = Math.ceil((nextSend.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   const diffReminder = Math.ceil((nextReminder.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-  return { diffSend, diffReminder, nextSend, nextReminder };
+  return { diffSend, diffReminder };
 }
 
 const StatCard = ({
-  title,
-  value,
-  subtitle,
-  icon: Icon,
-  trend,
-}: {
-  title: string;
-  value: string | number;
-  subtitle?: string;
-  icon: React.ElementType;
-  trend?: string;
-}) => (
+  title, value, subtitle, icon: Icon,
+}: { title: string; value: string | number; subtitle?: string; icon: React.ElementType }) => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
       <CardTitle className="text-sm font-medium">{title}</CardTitle>
@@ -126,22 +30,70 @@ const StatCard = ({
     <CardContent>
       <div className="text-2xl font-bold">{value}</div>
       {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
-      {trend && <p className="text-xs text-green-600 mt-1">{trend}</p>}
     </CardContent>
   </Card>
 );
 
 const Index = () => {
   const [countdown, setCountdown] = useState(getInvoiceCountdown());
+  const [stats, setStats] = useState({
+    propertyCount: 0,
+    rentedCount: 0,
+    vacantCount: 0,
+    rentedArea: 0,
+    vacantArea: 0,
+    tenantCount: 0,
+    totalRental: 0,
+    totalManagement: 0,
+  });
+  const [objectCount, setObjectCount] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => setCountdown(getInvoiceCountdown()), 60000);
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const [properties, tenants] = await Promise.all([
+          propertiesApi.getAll(),
+          tenantsApi.getAll(),
+        ]);
+        const rented = properties.filter((p: any) => p.status === "rented");
+        const vacant = properties.filter((p: any) => p.status === "vacant");
+        const uniqueObjects = new Set(properties.map((p: any) => p.objectName));
+
+        setObjectCount(uniqueObjects.size);
+        setStats({
+          propertyCount: properties.length,
+          rentedCount: rented.length,
+          vacantCount: vacant.length,
+          rentedArea: rented.reduce((s: number, p: any) => s + (p.areaSize || 0), 0),
+          vacantArea: vacant.reduce((s: number, p: any) => s + (p.areaSize || 0), 0),
+          tenantCount: tenants.length,
+          totalRental: rented.reduce((s: number, p: any) => s + (p.rentalAmount || 0), 0),
+          totalManagement: rented.reduce(
+            (s: number, p: any) => s + (p.managementFeePerSqm || 0) * (p.areaSize || 0),
+            0
+          ),
+        });
+      } catch {
+        // ignore
+      }
+    })();
+  }, []);
+
+  const formatMNT = (v: number) => {
+    if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)} сая₮`;
+    if (v >= 1000) return `${(v / 1000).toFixed(0)} мян₮`;
+    return `${v}₮`;
+  };
+
+  const monthLabel = new Date().toLocaleDateString("mn-MN", { year: "numeric", month: "long" });
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -151,12 +103,12 @@ const Index = () => {
               <p className="text-xs text-muted-foreground">Хяналтын самбар</p>
             </div>
           </div>
-          <Badge variant="outline" className="text-xs">2024 оны 6-р сар</Badge>
+          <Badge variant="outline" className="text-xs">{monthLabel}</Badge>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6">
-        {/* Invoice Schedule Countdown */}
+        {/* Invoice schedule countdown */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="border-primary/30 bg-primary/5">
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -167,12 +119,8 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold text-primary">{countdown.diffSend} хоног</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Дараагийн илгээх огноо: Сар бүрийн 5-нд
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                1-5-ны хооронд тооцоо хийгдэнэ
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Дараагийн илгээх огноо: Сар бүрийн 5-нд</p>
+              <p className="text-xs text-muted-foreground mt-0.5">1-5-ны хооронд тооцоо хийгдэнэ</p>
             </CardContent>
           </Card>
           <Card className="border-orange-500/30 bg-orange-500/5">
@@ -184,213 +132,37 @@ const Index = () => {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold text-orange-500">{countdown.diffReminder} хоног</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Дараагийн сануулга: Сар бүрийн 20-нд
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Төлөгдөөгүй нэхэмжлэхийг сануулна
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Дараагийн сануулга: Сар бүрийн 20-нд</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Төлөгдөөгүй нэхэмжлэхийг сануулна</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* KPI Cards Row 1 - Property */}
+        {/* Property stats */}
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
             <Home className="h-5 w-5" /> Объект & Талбайн мэдээлэл
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <StatCard title="Объектын тоо" value={12} icon={Building2} subtitle="Нийт бүртгэлтэй" />
-            <StatCard title="Түрээслэсэн талбай" value={156} icon={BarChart3} subtitle="24,800 м²" />
-            <StatCard title="Түрээслэсэн хэмжээ" value="24,800 м²" icon={TrendingUp} trend="+3.2%" />
-            <StatCard title="Сул талбай" value={44} icon={AlertCircle} subtitle="6,200 м²" />
-            <StatCard title="Сул талбайн хэмжээ" value="6,200 м²" icon={Home} />
+            <StatCard title="Объектын тоо" value={objectCount} icon={Building2} subtitle="Нийт бүртгэлтэй" />
+            <StatCard title="Түрээслэсэн талбай" value={stats.rentedCount} icon={BarChart3} subtitle={`${stats.rentedArea.toLocaleString()} м²`} />
+            <StatCard title="Түрээслэсэн хэмжээ" value={`${stats.rentedArea.toLocaleString()} м²`} icon={TrendingUp} />
+            <StatCard title="Сул талбай" value={stats.vacantCount} icon={AlertCircle} subtitle={`${stats.vacantArea.toLocaleString()} м²`} />
+            <StatCard title="Сул талбайн хэмжээ" value={`${stats.vacantArea.toLocaleString()} м²`} icon={Home} />
           </div>
         </div>
 
-        {/* KPI Cards Row 2 - Tenants & Finance */}
+        {/* Tenants & Finance */}
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
             <Users className="h-5 w-5" /> Түрээслэгч & Санхүү
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <StatCard title="Түрээслэгчдийн тоо" value={143} icon={Users} trend="+5 шинэ" />
-            <StatCard title="Түрээсийн орлого" value="51.0 сая₮" icon={DollarSign} trend="+4.2%" />
-            <StatCard title="Менежментийн орлого" value="9.5 сая₮" icon={DollarSign} trend="+3.3%" />
-            <StatCard title="Ашиглалтын төлбөр" value="12.2 сая₮" icon={FileText} />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <StatCard title="Түрээслэгчдийн тоо" value={stats.tenantCount} icon={Users} />
+            <StatCard title="Түрээсийн орлого" value={formatMNT(stats.totalRental)} icon={TrendingUp} />
+            <StatCard title="Менежментийн орлого" value={formatMNT(stats.totalManagement)} icon={BarChart3} />
           </div>
         </div>
-
-        {/* Invoice summary + Feedback */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Илгээгдсэн нэхэмжлэл</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">135</div>
-              <p className="text-xs text-muted-foreground">Нийт дүн: 72.7 сая₮</p>
-              <Progress value={89} className="mt-2 h-2" />
-              <p className="text-xs text-muted-foreground mt-1">89% төлөгдсөн</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Төлөгдөөгүй нэхэмжлэл</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">15</div>
-              <p className="text-xs text-muted-foreground">Нийт дүн: 8.2 сая₮</p>
-              <Progress value={11} className="mt-2 h-2" />
-              <p className="text-xs text-destructive mt-1">11% төлөгдөөгүй</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                Санал хүсэлт
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">65</div>
-              <p className="text-xs text-muted-foreground">Энэ сард ирсэн</p>
-              <div className="mt-2 space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Засвар үйлчилгээ</span>
-                  <span className="font-medium text-foreground">24</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Зогсоол</span>
-                  <span className="font-medium text-foreground">15</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Цэвэрлэгээ</span>
-                  <span className="font-medium text-foreground">12</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Charts */}
-        <Tabs defaultValue="revenue" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="revenue">Орлогын график</TabsTrigger>
-            <TabsTrigger value="invoices">Нэхэмжлэл</TabsTrigger>
-            <TabsTrigger value="occupancy">Ашиглалт</TabsTrigger>
-            <TabsTrigger value="feedback">Санал хүсэлт</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="revenue">
-            <Card>
-              <CardHeader>
-                <CardTitle>Сарын орлогын харьцуулалт</CardTitle>
-                <CardDescription>Түрээс, менежмент, ашиглалтын орлого (₮)</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={revenueChartConfig} className="h-[350px] w-full">
-                  <AreaChart data={monthlyRevenue}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis tickFormatter={formatMNT} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Area type="monotone" dataKey="rental" stackId="1" fill="var(--color-rental)" stroke="var(--color-rental)" fillOpacity={0.6} />
-                    <Area type="monotone" dataKey="management" stackId="1" fill="var(--color-management)" stroke="var(--color-management)" fillOpacity={0.6} />
-                    <Area type="monotone" dataKey="utility" stackId="1" fill="var(--color-utility)" stroke="var(--color-utility)" fillOpacity={0.6} />
-                  </AreaChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="invoices">
-            <Card>
-              <CardHeader>
-                <CardTitle>Нэхэмжлэлийн статистик</CardTitle>
-                <CardDescription>Илгээсэн, төлөгдсөн, төлөгдөөгүй</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={invoiceChartConfig} className="h-[350px] w-full">
-                  <BarChart data={invoiceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="sent" fill="var(--color-sent)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="paid" fill="var(--color-paid)" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="unpaid" fill="var(--color-unpaid)" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="occupancy">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Талбайн ашиглалт</CardTitle>
-                  <CardDescription>Түрээслэсэн vs Сул талбай</CardDescription>
-                </CardHeader>
-                <CardContent className="flex justify-center">
-                  <ChartContainer config={{ occupied: { label: "Түрээслэсэн", color: "hsl(var(--primary))" }, vacant: { label: "Сул", color: "hsl(var(--muted))" } }} className="h-[250px] w-[250px]">
-                    <PieChart>
-                      <Pie data={occupancyData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2}>
-                        {occupancyData.map((entry, index) => (
-                          <Cell key={index} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                    </PieChart>
-                  </ChartContainer>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Ашиглалтын хувь</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {[
-                    { name: "Объект 1 - Оффис", pct: 92 },
-                    { name: "Объект 2 - Худалдааны төв", pct: 85 },
-                    { name: "Объект 3 - Агуулах", pct: 70 },
-                    { name: "Объект 4 - Оффис", pct: 95 },
-                    { name: "Объект 5 - Худалдааны төв", pct: 60 },
-                  ].map((obj) => (
-                    <div key={obj.name}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-foreground">{obj.name}</span>
-                        <span className="text-muted-foreground">{obj.pct}%</span>
-                      </div>
-                      <Progress value={obj.pct} className="h-2" />
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="feedback">
-            <Card>
-              <CardHeader>
-                <CardTitle>Түрээслэгчдийн санал хүсэлт</CardTitle>
-                <CardDescription>Ангилал тус бүрээр</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ChartContainer config={feedbackChartConfig} className="h-[300px] w-full">
-                  <BarChart data={feedbackData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="type" type="category" width={120} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ChartContainer>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
       </main>
     </div>
   );

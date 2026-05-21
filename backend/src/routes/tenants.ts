@@ -5,19 +5,19 @@ const router = Router();
 
 router.get("/", async (_req, res) => {
   try {
-    const tenants = await Tenant.find().sort({ tenantId: 1 });
+    const tenants = await Tenant.find().sort({ createdAt: -1 });
     res.json(tenants);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Өгөгдөл татахад алдаа гарлаа" });
   }
 });
 
 router.get("/:id", async (req, res) => {
   try {
-    const tenant = await Tenant.findOne({ tenantId: req.params.id });
+    const tenant = await Tenant.findById(req.params.id);
     if (!tenant) return res.status(404).json({ error: "Олдсонгүй" });
     res.json(tenant);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Алдаа гарлаа" });
   }
 });
@@ -34,11 +34,10 @@ router.post("/", async (req, res) => {
 
 router.put("/:id", async (req, res) => {
   try {
-    const tenant = await Tenant.findOneAndUpdate(
-      { tenantId: req.params.id },
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const tenant = await Tenant.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
+    });
     if (!tenant) return res.status(404).json({ error: "Олдсонгүй" });
     res.json(tenant);
   } catch (err: any) {
@@ -48,10 +47,10 @@ router.put("/:id", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    const tenant = await Tenant.findOneAndDelete({ tenantId: req.params.id });
+    const tenant = await Tenant.findByIdAndDelete(req.params.id);
     if (!tenant) return res.status(404).json({ error: "Олдсонгүй" });
     res.json({ message: "Амжилттай устгалаа" });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Алдаа гарлаа" });
   }
 });

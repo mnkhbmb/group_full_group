@@ -1,35 +1,34 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Building2, Plus, Search, X, Pencil } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { PropertyRecord, mainObjects as initialObjects, propertyData } from "@/data/properties";
+import { propertiesApi } from "@/lib/api";
+
+interface PropertyRecord {
+  _id: string;
+  objectName: string;
+  floor: string;
+  areaId: string;
+  areaSize: number;
+  rentalAmount: number;
+  pricePerSqm: number;
+  managementFeePerSqm: number;
+  status: "rented" | "vacant";
+  createdAt?: string;
+}
 
 const emptyForm = {
   objectName: "",
@@ -45,15 +44,33 @@ const emptyForm = {
 const formatMNT = (v: number) => v.toLocaleString("mn-MN") + "₮";
 
 const Property = () => {
-  const [records, setRecords] = useState<PropertyRecord[]>(propertyData);
+  const [records, setRecords] = useState<PropertyRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [form, setForm] = useState(emptyForm);
-  const [objects, setObjects] = useState<string[]>(initialObjects);
+  const [objects, setObjects] = useState<string[]>([]);
   const [objectDialogOpen, setObjectDialogOpen] = useState(false);
   const [newObjectName, setNewObjectName] = useState("");
   const { toast } = useToast();
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      const data = await propertiesApi.getAll();
+      setRecords(data);
+      // объектын нэрсийг бүртгэлээс цуглуулна
+      const uniqueObjects = Array.from(new Set(data.map((d: any) => d.objectName).filter(Boolean)));
+      setObjects(uniqueObjects as string[]);
+    } catch (err: any) {
+      toast({ title: "Алдаа", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
 
   const handleAddObject = () => {
     if (!newObjectName.trim()) return;
@@ -85,7 +102,7 @@ const Property = () => {
   };
 
   const openEdit = (r: PropertyRecord) => {
-    setEditingId(r.id);
+    setEditingId(r._id);
     setForm({
       objectName: r.objectName,
       floor: r.floor,
@@ -99,51 +116,36 @@ const Property = () => {
     setDialogOpen(true);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.objectName || !form.areaId) {
       toast({ title: "Алдаа", description: "Заавал бөглөх талбаруудыг бөглөнө үү", variant: "destructive" });
       return;
     }
-
-    if (editingId) {
-      setRecords((prev) =>
-        prev.map((r) =>
-          r.id === editingId
-            ? {
-                ...r,
-                objectName: form.objectName,
-                floor: form.floor,
-                areaId: form.areaId,
-                areaSize: Number(form.areaSize) || 0,
-                rentalAmount: Number(form.rentalAmount) || 0,
-                pricePerSqm: Number(form.pricePerSqm) || 0,
-                managementFeePerSqm: Number(form.managementFeePerSqm) || 0,
-                status: form.status,
-              }
-            : r
-        )
-      );
-      toast({ title: "Амжилттай", description: "Хөрөнгийн мэдээлэл шинэчлэгдлээ" });
-    } else {
-      const newRecord: PropertyRecord = {
-        id: Date.now().toString(),
-        objectName: form.objectName,
-        floor: form.floor,
-        areaId: form.areaId,
-        areaSize: Number(form.areaSize) || 0,
-        rentalAmount: Number(form.rentalAmount) || 0,
-        pricePerSqm: Number(form.pricePerSqm) || 0,
-        managementFeePerSqm: Number(form.managementFeePerSqm) || 0,
-        status: form.status,
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-      setRecords((prev) => [newRecord, ...prev]);
-      toast({ title: "Амжилттай", description: "Хөрөнгө амжилттай бүртгэгдлээ" });
+    const data = {
+      objectName: form.objectName,
+      floor: form.floor,
+      areaId: form.areaId,
+      areaSize: Number(form.areaSize) || 0,
+      rentalAmount: Number(form.rentalAmount) || 0,
+      pricePerSqm: Number(form.pricePerSqm) || 0,
+      managementFeePerSqm: Number(form.managementFeePerSqm) || 0,
+      status: form.status,
+    };
+    try {
+      if (editingId) {
+        await propertiesApi.update(editingId, data);
+        toast({ title: "Амжилттай", description: "Шинэчлэгдлээ" });
+      } else {
+        await propertiesApi.create(data);
+        toast({ title: "Амжилттай", description: "Хөрөнгө бүртгэгдлээ" });
+      }
+      setForm(emptyForm);
+      setEditingId(null);
+      setDialogOpen(false);
+      load();
+    } catch (err: any) {
+      toast({ title: "Алдаа", description: err.message, variant: "destructive" });
     }
-
-    setForm(emptyForm);
-    setEditingId(null);
-    setDialogOpen(false);
   };
 
   const updateField = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
@@ -204,15 +206,21 @@ const Property = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {loading ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
-                      Илэрц олдсонгүй
+                      Уншиж байна...
+                    </TableCell>
+                  </TableRow>
+                ) : filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
+                      Бүртгэл байхгүй байна
                     </TableCell>
                   </TableRow>
                 ) : (
                   filtered.map((r) => (
-                    <TableRow key={r.id}>
+                    <TableRow key={r._id}>
                       <TableCell className="font-medium">{r.objectName}</TableCell>
                       <TableCell>{r.floor}-р давхар</TableCell>
                       <TableCell>
@@ -250,16 +258,24 @@ const Property = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
             <div className="space-y-2">
               <Label>Объект *</Label>
-              <Select value={form.objectName} onValueChange={(v) => updateField("objectName", v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Объект сонгох" />
-                </SelectTrigger>
-                <SelectContent>
-                  {objects.map((obj) => (
-                    <SelectItem key={obj} value={obj}>{obj}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {objects.length === 0 ? (
+                <Input
+                  placeholder="Объектын нэр"
+                  value={form.objectName}
+                  onChange={(e) => updateField("objectName", e.target.value)}
+                />
+              ) : (
+                <Select value={form.objectName} onValueChange={(v) => updateField("objectName", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Объект сонгох" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {objects.map((obj) => (
+                      <SelectItem key={obj} value={obj}>{obj}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Давхар</Label>

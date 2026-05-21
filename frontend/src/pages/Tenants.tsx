@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Users, Plus, Search, X, Pencil, Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,27 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { propertyData } from "@/data/properties";
+import { tenantsApi, propertiesApi } from "@/lib/api";
 
 interface TenantRecord {
-  id: string;
+  _id: string;
   contractNumber: string;
   lastName: string;
   firstName: string;
@@ -36,76 +26,16 @@ interface TenantRecord {
   registerNumber: string;
   propertyIds: string[];
   status: "active" | "inactive";
-  createdAt: string;
 }
 
-const initialData: TenantRecord[] = [
-  {
-    id: "1",
-    contractNumber: "GR-2024-001",
-    lastName: "Бат",
-    firstName: "Дорж",
-    phone: "99112233",
-    email: "bat.dorj@mail.mn",
-    company: "Бат Дорж ХХК",
-    registerNumber: "УБ12345678",
-    propertyIds: ["1"],
-    status: "active",
-    createdAt: "2024-01-15",
-  },
-  {
-    id: "2",
-    contractNumber: "GR-2024-002",
-    lastName: "Болд",
-    firstName: "Сүхбат",
-    phone: "88001122",
-    email: "bold.s@mail.mn",
-    company: "Болд Трейд ХХК",
-    registerNumber: "УБ87654321",
-    propertyIds: ["2", "3"],
-    status: "active",
-    createdAt: "2024-02-01",
-  },
-  {
-    id: "3",
-    contractNumber: "GR-2024-003",
-    lastName: "Ган",
-    firstName: "Тулга",
-    phone: "95553344",
-    email: "gan.tulga@mail.mn",
-    company: "Тулга Групп ХХК",
-    registerNumber: "УБ11223344",
-    propertyIds: ["3"],
-    status: "active",
-    createdAt: "2024-02-20",
-  },
-  {
-    id: "4",
-    contractNumber: "GR-2024-004",
-    lastName: "Нар",
-    firstName: "Мандах",
-    phone: "80112233",
-    email: "nar.m@mail.mn",
-    company: "",
-    registerNumber: "АА99887766",
-    propertyIds: [],
-    status: "inactive",
-    createdAt: "2024-03-10",
-  },
-  {
-    id: "5",
-    contractNumber: "GR-2024-005",
-    lastName: "Оюун",
-    firstName: "Эрдэнэ",
-    phone: "99887766",
-    email: "oyun.e@mail.mn",
-    company: "Оюун Эрдэнэ ХХК",
-    registerNumber: "УБ55667788",
-    propertyIds: ["5"],
-    status: "active",
-    createdAt: "2024-03-25",
-  },
-];
+interface PropertyRecord {
+  _id: string;
+  objectName: string;
+  floor: string;
+  areaId: string;
+  areaSize: number;
+  status: "rented" | "vacant";
+}
 
 const emptyForm = {
   contractNumber: "",
@@ -118,7 +48,9 @@ const emptyForm = {
 };
 
 const Tenants = () => {
-  const [records, setRecords] = useState<TenantRecord[]>(initialData);
+  const [records, setRecords] = useState<TenantRecord[]>([]);
+  const [properties, setProperties] = useState<PropertyRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -127,16 +59,31 @@ const Tenants = () => {
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
   const { toast } = useToast();
 
+  const load = async () => {
+    try {
+      setLoading(true);
+      const [t, p] = await Promise.all([tenantsApi.getAll(), propertiesApi.getAll()]);
+      setRecords(t);
+      setProperties(p);
+    } catch (err: any) {
+      toast({ title: "Алдаа", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, []);
+
   const filteredProperties = useMemo(() => {
-    if (!propertySearch.trim()) return propertyData;
+    if (!propertySearch.trim()) return properties;
     const q = propertySearch.toLowerCase();
-    return propertyData.filter(
+    return properties.filter(
       (p) =>
         p.objectName.toLowerCase().includes(q) ||
         p.areaId.toLowerCase().includes(q) ||
         p.floor.includes(q)
     );
-  }, [propertySearch]);
+  }, [propertySearch, properties]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return records;
@@ -161,11 +108,6 @@ const Tenants = () => {
     );
   };
 
-  const getPropertyLabel = (id: string) => {
-    const p = propertyData.find((pr) => pr.id === id);
-    return p ? `${p.objectName} / ${p.areaId} (${p.floor}-р давхар)` : id;
-  };
-
   const openCreate = () => {
     setEditingId(null);
     setForm(emptyForm);
@@ -174,7 +116,7 @@ const Tenants = () => {
   };
 
   const openEdit = (r: TenantRecord) => {
-    setEditingId(r.id);
+    setEditingId(r._id);
     setForm({
       contractNumber: r.contractNumber,
       lastName: r.lastName,
@@ -188,37 +130,28 @@ const Tenants = () => {
     setDialogOpen(true);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.contractNumber || !form.firstName) {
       toast({ title: "Алдаа", description: "Заавал бөглөх талбаруудыг бөглөнө үү", variant: "destructive" });
       return;
     }
-
-    if (editingId) {
-      setRecords((prev) =>
-        prev.map((r) =>
-          r.id === editingId
-            ? { ...r, ...form, propertyIds: selectedPropertyIds }
-            : r
-        )
-      );
-      toast({ title: "Амжилттай", description: "Түрээслэгчийн мэдээлэл шинэчлэгдлээ" });
-    } else {
-      const newRecord: TenantRecord = {
-        id: Date.now().toString(),
-        ...form,
-        propertyIds: selectedPropertyIds,
-        status: "active",
-        createdAt: new Date().toISOString().split("T")[0],
-      };
-      setRecords((prev) => [newRecord, ...prev]);
-      toast({ title: "Амжилттай", description: "Түрээслэгч амжилттай бүртгэгдлээ" });
+    const data = { ...form, propertyIds: selectedPropertyIds, status: "active" as const };
+    try {
+      if (editingId) {
+        await tenantsApi.update(editingId, data);
+        toast({ title: "Амжилттай", description: "Шинэчлэгдлээ" });
+      } else {
+        await tenantsApi.create(data);
+        toast({ title: "Амжилттай", description: "Түрээслэгч бүртгэгдлээ" });
+      }
+      setForm(emptyForm);
+      setSelectedPropertyIds([]);
+      setEditingId(null);
+      setDialogOpen(false);
+      load();
+    } catch (err: any) {
+      toast({ title: "Алдаа", description: err.message, variant: "destructive" });
     }
-
-    setForm(emptyForm);
-    setSelectedPropertyIds([]);
-    setEditingId(null);
-    setDialogOpen(false);
   };
 
   const updateField = (key: string, value: string) => setForm((p) => ({ ...p, [key]: value }));
@@ -273,21 +206,27 @@ const Tenants = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.length === 0 ? (
+                {loading ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
-                      Илэрц олдсонгүй
+                      Уншиж байна...
+                    </TableCell>
+                  </TableRow>
+                ) : filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                      Бүртгэл байхгүй байна
                     </TableCell>
                   </TableRow>
                 ) : (
                   filtered.map((r) => (
-                    <TableRow key={r.id}>
+                    <TableRow key={r._id}>
                       <TableCell>
                         <Badge variant="outline" className="font-mono text-xs">{r.contractNumber}</Badge>
                       </TableCell>
                       <TableCell className="font-medium">{r.lastName} {r.firstName}</TableCell>
-                      <TableCell>{r.phone}</TableCell>
-                      <TableCell className="hidden md:table-cell">{r.email}</TableCell>
+                      <TableCell>{r.phone || "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell">{r.email || "—"}</TableCell>
                       <TableCell className="hidden lg:table-cell">{r.company || "—"}</TableCell>
                       <TableCell className="hidden md:table-cell">
                         <div className="flex flex-wrap gap-1">
@@ -295,7 +234,7 @@ const Tenants = () => {
                             <span className="text-muted-foreground text-xs">—</span>
                           ) : (
                             r.propertyIds.map((pid) => {
-                              const p = propertyData.find((pr) => pr.id === pid);
+                              const p = properties.find((pr) => pr._id === pid);
                               return (
                                 <Badge key={pid} variant="secondary" className="text-xs">
                                   <Building2 className="h-3 w-3 mr-1" />
@@ -376,16 +315,18 @@ const Tenants = () => {
             </div>
             <div className="border rounded-md max-h-48 overflow-y-auto">
               {filteredProperties.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Илэрц олдсонгүй</p>
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  {properties.length === 0 ? "Эхлээд хөрөнгө бүртгэнэ үү" : "Илэрц олдсонгүй"}
+                </p>
               ) : (
                 filteredProperties.map((p) => (
                   <label
-                    key={p.id}
+                    key={p._id}
                     className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer border-b last:border-b-0"
                   >
                     <Checkbox
-                      checked={selectedPropertyIds.includes(p.id)}
-                      onCheckedChange={() => toggleProperty(p.id)}
+                      checked={selectedPropertyIds.includes(p._id)}
+                      onCheckedChange={() => toggleProperty(p._id)}
                     />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{p.objectName}</p>
