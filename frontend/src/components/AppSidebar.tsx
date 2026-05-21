@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, Receipt, Wrench, Users, User, Settings, LogOut, ChevronUp, UserCog } from "lucide-react";
+import { LayoutDashboard, Building2, Receipt, Wrench, Users, User, LogOut, ChevronUp, UserCog } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth, ROLE_LABELS } from "@/contexts/AuthContext";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -14,12 +14,20 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const menuItems: { title: string; url: string; icon: typeof LayoutDashboard; key: RouteKey }[] = [
+interface MenuItem {
+  title: string;
+  url: string;
+  icon: typeof LayoutDashboard;
+  key: RouteKey;
+  comingSoon?: boolean;
+}
+
+const menuItems: MenuItem[] = [
   { title: "Хяналтын самбар", url: "/",            icon: LayoutDashboard, key: "dashboard" },
   { title: "Хөрөнгө",         url: "/property",    icon: Building2,       key: "property" },
   { title: "Түрээслэгч",      url: "/tenants",     icon: Users,           key: "tenants" },
-  // { title: "Санхүү бүртгэл",  url: "/finance",     icon: Receipt,         key: "finance" },
-  // { title: "Ашиглалт",        url: "/operations",  icon: Wrench,          key: "operations" },
+  { title: "Санхүү бүртгэл",  url: "/finance",     icon: Receipt,         key: "finance",    comingSoon: true },
+  { title: "Ашиглалт",        url: "/operations",  icon: Wrench,          key: "operations", comingSoon: true },
 ];
 
 export function AppSidebar() {
@@ -47,21 +55,49 @@ export function AppSidebar() {
           <SidebarGroupLabel>Үндсэн цэс</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.filter((item) => canAccessRoute(user?.role, item.key)).map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild isActive={location.pathname === item.url} tooltip={item.title}>
-                    <NavLink to={item.url} end activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium">
-                      <item.icon className="h-4 w-4" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {menuItems
+                .filter((item) => item.comingSoon || canAccessRoute(user?.role, item.key))
+                .map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    {item.comingSoon ? (
+                      <SidebarMenuButton
+                        disabled
+                        tooltip={`${item.title} — Тун удахгүй`}
+                        className="opacity-60 cursor-not-allowed"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {!collapsed && (
+                          <>
+                            <span>{item.title}</span>
+                            <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 border border-orange-200 font-medium">
+                              Тун удахгүй
+                            </span>
+                          </>
+                        )}
+                      </SidebarMenuButton>
+                    ) : (
+                      <SidebarMenuButton
+                        asChild
+                        isActive={location.pathname === item.url}
+                        tooltip={item.title}
+                      >
+                        <NavLink
+                          to={item.url}
+                          end
+                          activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                        >
+                          <item.icon className="h-4 w-4" />
+                          {!collapsed && <span>{item.title}</span>}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    )}
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Admin — хэрэглэгч удирдлага */}
+        {/* Admin */}
         {canAccessRoute(user?.role, "users") && (
           <SidebarGroup>
             <SidebarGroupLabel>Админ</SidebarGroupLabel>
