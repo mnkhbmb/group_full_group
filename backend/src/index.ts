@@ -11,16 +11,11 @@ import usersRouter from "./routes/users.js";
 const app = express();
 const PORT = process.env.PORT || 3001;
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/ubgroup";
-const CORS_ORIGIN = process.env.CORS_ORIGIN || "";
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (CORS_ORIGIN && origin === CORS_ORIGIN) return callback(null, true);
-    if (!CORS_ORIGIN && origin.endsWith(":5173")) return callback(null, true);
-    callback(new Error("CORS: зөвшөөрөгдөөгүй origin"));
-  },
-}));
+// CORS — бүх origin зөвшөөр (production-д хожим хязгаарлана)
+app.use(cors());
+app.options("*", cors());
+
 app.use(express.json());
 
 app.use("/api/auth", authRouter);
@@ -31,7 +26,6 @@ app.use("/api/meter-readings", meterReadingsRouter);
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
-// Server-г эхлэх, MongoDB алдаа гарсан ч зогсохгүй
 app.listen(PORT, () => console.log(`Server ажиллаж байна: http://localhost:${PORT}`));
 
 connectDB(MONGODB_URI).catch((err) => {
