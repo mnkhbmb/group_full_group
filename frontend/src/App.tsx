@@ -12,6 +12,8 @@ import Tenants from "./pages/Tenants.tsx";
 import Finance from "./pages/Finance.tsx";
 import Operations from "./pages/Operations.tsx";
 import Login from "./pages/Login.tsx";
+import Profile from "./pages/Profile.tsx";
+import Users from "./pages/Users.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -36,6 +38,8 @@ function ProtectedRoutes() {
         <Route path="/tenants" element={<RoleGuard><Tenants /></RoleGuard>} />
         <Route path="/finance" element={<RoleGuard><Finance /></RoleGuard>} />
         <Route path="/operations" element={<RoleGuard><Operations /></RoleGuard>} />
+        <Route path="/profile" element={<RoleGuard><Profile /></RoleGuard>} />
+        <Route path="/users" element={<RoleGuard><Users /></RoleGuard>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>

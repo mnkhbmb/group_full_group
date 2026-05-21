@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx vite *)",
+      "Bash(bun run *)",
+      "Bash(npm run *)",
+      "Read(//tmp/**)",
+      "Bash(curl -s -X POST http://localhost:3001/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"munkhbymba0217@gmail.com\",\"password\":\"Pass123$\"}')",
+      "Bash(pkill -f \"tsx watch src/index.ts\")",
+      "Bash(rm -rf src public server node_modules)",
+      "Bash(rm -f index.html package.json package-lock.json components.json eslint.config.js postcss.config.js tailwind.config.ts tsconfig.app.json tsconfig.json tsconfig.node.json vite.config.ts vitest.config.ts playwright-fixture.ts playwright.config.ts README.md bun.lock bun.lockb .env)",
+      "Bash(fuser D:/project/ubgroup/server)",
+      "PowerShell(Get-Process node, tsx -ErrorAction SilentlyContinue)",
+      "Bash(npm install *)",
+      "Bash(pkill -f \"tsx watch\")"
+    ]
+  }
+}

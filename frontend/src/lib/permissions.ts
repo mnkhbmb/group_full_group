@@ -1,6 +1,6 @@
 import type { AppRole } from "@/contexts/AuthContext";
 
-export type RouteKey = "dashboard" | "property" | "tenants" | "finance" | "operations";
+export type RouteKey = "dashboard" | "property" | "tenants" | "finance" | "operations" | "users" | "profile";
 
 /** Аль role аль route-руу нэвтрэх боломжтой */
 const ROUTE_ACCESS: Record<RouteKey, AppRole[]> = {
@@ -9,6 +9,8 @@ const ROUTE_ACCESS: Record<RouteKey, AppRole[]> = {
   tenants: ["admin", "general_manager", "sales_manager", "engineer", "accountant"],
   finance: ["admin", "general_manager", "accountant"],
   operations: ["admin", "general_manager", "engineer", "accountant"],
+  users: ["admin"],
+  profile: ["admin", "general_manager", "sales_manager", "engineer", "accountant", "user"],
 };
 
 export const ROUTE_PATHS: Record<RouteKey, string> = {
@@ -17,6 +19,8 @@ export const ROUTE_PATHS: Record<RouteKey, string> = {
   tenants: "/tenants",
   finance: "/finance",
   operations: "/operations",
+  users: "/users",
+  profile: "/profile",
 };
 
 export function canAccessRoute(role: AppRole | undefined, route: RouteKey): boolean {
@@ -27,7 +31,7 @@ export function canAccessRoute(role: AppRole | undefined, route: RouteKey): bool
 export function canAccessPath(role: AppRole | undefined, path: string): boolean {
   if (!role) return false;
   const entry = (Object.entries(ROUTE_PATHS) as [RouteKey, string][]).find(([, p]) => p === path);
-  if (!entry) return true; // unknown paths (e.g. NotFound) — allow
+  if (!entry) return true;
   return canAccessRoute(role, entry[0]);
 }
 
