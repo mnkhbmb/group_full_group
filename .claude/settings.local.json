@@ -15,7 +15,8 @@
       "Bash(pkill -f \"tsx watch\")",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(MONGODB_URI=\"mongodb://admin:88361436@202.180.218.186:27019/ubgroup?authSource=admin\" npm run seed)"
     ]
   }
 }
