@@ -12,7 +12,10 @@
       "Bash(fuser D:/project/ubgroup/server)",
       "PowerShell(Get-Process node, tsx -ErrorAction SilentlyContinue)",
       "Bash(npm install *)",
-      "Bash(pkill -f \"tsx watch\")"
+      "Bash(pkill -f \"tsx watch\")",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
     ]
   }
 }

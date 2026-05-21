@@ -15,8 +15,6 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || "";
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Production: CORS_ORIGIN env-ээс авна
-    // Development: 5173 port болон origin байхгүй (curl/postman) → зөвшөөр
     if (!origin) return callback(null, true);
     if (CORS_ORIGIN && origin === CORS_ORIGIN) return callback(null, true);
     if (!CORS_ORIGIN && origin.endsWith(":5173")) return callback(null, true);
@@ -33,6 +31,9 @@ app.use("/api/meter-readings", meterReadingsRouter);
 
 app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
 
-connectDB(MONGODB_URI).then(() => {
-  app.listen(PORT, () => console.log(`Server ажиллаж байна: http://localhost:${PORT}`));
+// Server-г эхлэх, MongoDB алдаа гарсан ч зогсохгүй
+app.listen(PORT, () => console.log(`Server ажиллаж байна: http://localhost:${PORT}`));
+
+connectDB(MONGODB_URI).catch((err) => {
+  console.error("MongoDB холбогдоход алдаа:", err.message);
 });
