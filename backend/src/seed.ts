@@ -10,14 +10,12 @@ const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/ubgrou
 
 await connectDB(MONGODB_URI);
 
-// ── Бүгдийг цэвэрлэх ─────────────────────────────────────
 await User.deleteMany({});
 await Property.deleteMany({});
 await Tenant.deleteMany({});
 await MeterReading.deleteMany({});
-console.log("✓ Хуучин өгөгдөл устгагдлаа");
+console.log("✓ DB бүтэн цэвэрлэгдлээ");
 
-// ── Хэрэглэгч ────────────────────────────────────────────
 await User.create({
   email: "admin",
   password: await bcrypt.hash("admin1234", 10),
@@ -26,5 +24,4 @@ await User.create({
 });
 console.log("✓ admin / admin1234 үүслээ");
 
-console.log("✓ Seed дууслаа!");
 process.exit(0);

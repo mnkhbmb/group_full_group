@@ -18,8 +18,8 @@ const menuItems: { title: string; url: string; icon: typeof LayoutDashboard; key
   { title: "Хяналтын самбар", url: "/",            icon: LayoutDashboard, key: "dashboard" },
   { title: "Хөрөнгө",         url: "/property",    icon: Building2,       key: "property" },
   { title: "Түрээслэгч",      url: "/tenants",     icon: Users,           key: "tenants" },
-  { title: "Санхүү бүртгэл",  url: "/finance",     icon: Receipt,         key: "finance" },
-  { title: "Ашиглалт",        url: "/operations",  icon: Wrench,          key: "operations" },
+  // { title: "Санхүү бүртгэл",  url: "/finance",     icon: Receipt,         key: "finance" },
+  // { title: "Ашиглалт",        url: "/operations",  icon: Wrench,          key: "operations" },
 ];
 
 export function AppSidebar() {
