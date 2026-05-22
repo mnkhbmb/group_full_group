@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Building2, Users, AlertCircle, BarChart3, TrendingUp, Home, CalendarClock, Bell } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { propertiesApi, tenantsApi } from "@/lib/api";
+import { propertiesApi, tenantsApi, objectsApi } from "@/lib/api";
 
 function getInvoiceCountdown() {
   const now = new Date();
@@ -56,15 +56,15 @@ const Index = () => {
   useEffect(() => {
     (async () => {
       try {
-        const [properties, tenants] = await Promise.all([
+        const [properties, tenants, objects] = await Promise.all([
           propertiesApi.getAll(),
           tenantsApi.getAll(),
+          objectsApi.getAll(),
         ]);
         const rented = properties.filter((p: any) => p.status === "rented");
         const vacant = properties.filter((p: any) => p.status === "vacant");
-        const uniqueObjects = new Set(properties.map((p: any) => p.objectName));
 
-        setObjectCount(uniqueObjects.size);
+        setObjectCount(objects.length);
         setStats({
           propertyCount: properties.length,
           rentedCount: rented.length,
