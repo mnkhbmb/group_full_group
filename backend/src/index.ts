@@ -7,6 +7,7 @@ import tenantsRouter from "./routes/tenants.js";
 import meterReadingsRouter from "./routes/meterReadings.js";
 import authRouter from "./routes/auth.js";
 import usersRouter from "./routes/users.js";
+import objectsRouter from "./routes/objects.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -20,6 +21,7 @@ app.use(express.json());
 
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
+app.use("/api/objects", objectsRouter);
 app.use("/api/properties", propertiesRouter);
 app.use("/api/tenants", tenantsRouter);
 app.use("/api/meter-readings", meterReadingsRouter);

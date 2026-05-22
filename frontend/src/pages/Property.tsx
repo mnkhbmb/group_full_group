@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { propertiesApi } from "@/lib/api";
+import { propertiesApi, objectsApi } from "@/lib/api";
 
 interface PropertyRecord {
   _id: string;
@@ -58,11 +58,9 @@ const Property = () => {
   const load = async () => {
     try {
       setLoading(true);
-      const data = await propertiesApi.getAll();
-      setRecords(data);
-      // объектын нэрсийг бүртгэлээс цуглуулна
-      const uniqueObjects = Array.from(new Set(data.map((d: any) => d.objectName).filter(Boolean)));
-      setObjects(uniqueObjects as string[]);
+      const [props, objs] = await Promise.all([propertiesApi.getAll(), objectsApi.getAll()]);
+      setRecords(props);
+      setObjects(objs.map((o: any) => o.name));
     } catch (err: any) {
       toast({ title: "Алдаа", description: err.message, variant: "destructive" });
     } finally {
@@ -72,16 +70,17 @@ const Property = () => {
 
   useEffect(() => { load(); }, []);
 
-  const handleAddObject = () => {
+  const handleAddObject = async () => {
     if (!newObjectName.trim()) return;
-    if (objects.includes(newObjectName.trim())) {
-      toast({ title: "Алдаа", description: "Энэ объект аль хэдийн бүртгэгдсэн байна", variant: "destructive" });
-      return;
+    try {
+      await objectsApi.create(newObjectName.trim());
+      setNewObjectName("");
+      setObjectDialogOpen(false);
+      toast({ title: "Амжилттай", description: "Шинэ объект нэмэгдлээ" });
+      load();
+    } catch (err: any) {
+      toast({ title: "Алдаа", description: err.message, variant: "destructive" });
     }
-    setObjects((prev) => [...prev, newObjectName.trim()]);
-    setNewObjectName("");
-    setObjectDialogOpen(false);
-    toast({ title: "Амжилттай", description: "Шинэ объект нэмэгдлээ" });
   };
 
   const filtered = useMemo(() => {

@@ -31,6 +31,13 @@ export const usersApi = {
     request<any>("/users/change-password", { method: "POST", body: JSON.stringify({ email, currentPassword, newPassword }) }),
 };
 
+// ──── Building Objects ────
+export const objectsApi = {
+  getAll: () => request<any[]>("/objects"),
+  create: (name: string) => request<any>("/objects", { method: "POST", body: JSON.stringify({ name }) }),
+  delete: (id: string) => request<any>(`/objects/${id}`, { method: "DELETE" }),
+};
+
 // ──── Properties ────
 export const propertiesApi = {
   getAll: () => request<any[]>("/properties"),
