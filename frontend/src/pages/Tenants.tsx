@@ -9,6 +9,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +40,20 @@ interface PropertyRecord {
   status: "rented" | "vacant";
 }
 
+// Угтварын жагсаалт — шаардлагаар нэмж болно
+const CONTRACT_PREFIXES = ["DIG-R", "UBG-UUG", "UBG-R", "DIG-UUG", "GR"];
+
+function parseContractNumber(cn: string) {
+  const parts = cn.split("-");
+  if (parts.length >= 3) {
+    const seq = parts[parts.length - 1];
+    const year = parts[parts.length - 2];
+    const prefix = parts.slice(0, parts.length - 2).join("-");
+    return { prefix, year, seq };
+  }
+  return { prefix: cn, year: String(new Date().getFullYear()), seq: "" };
+}
+
 const emptyForm = {
   contractNumber: "",
   lastName: "",
@@ -57,7 +74,21 @@ const Tenants = () => {
   const [propertySearch, setPropertySearch] = useState("");
   const [form, setForm] = useState(emptyForm);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<string[]>([]);
+
+  // Гэрээний дугаарын бүтэцтэй оруулах
+  const [useStructured, setUseStructured] = useState(true);
+  const [cnPrefix, setCnPrefix] = useState(CONTRACT_PREFIXES[0]);
+  const [cnPrefixIsCustom, setCnPrefixIsCustom] = useState(false);
+  const [cnYear, setCnYear] = useState(String(new Date().getFullYear()));
+  const [cnSeq, setCnSeq] = useState("");
+
   const { toast } = useToast();
+
+  // Бүтэцтэй оруулахаас бий болох гэрээний дугаар
+  const structuredContractNumber =
+    cnPrefix && cnYear && cnSeq
+      ? `${cnPrefix}-${cnYear}-${cnSeq.padStart(2, "0")}`
+      : "";
 
   const load = async () => {
     try {
@@ -108,10 +139,19 @@ const Tenants = () => {
     );
   };
 
+  const resetCnState = () => {
+    setUseStructured(true);
+    setCnPrefixIsCustom(false);
+    setCnPrefix(CONTRACT_PREFIXES[0]);
+    setCnYear(String(new Date().getFullYear()));
+    setCnSeq("");
+  };
+
   const openCreate = () => {
     setEditingId(null);
     setForm(emptyForm);
     setSelectedPropertyIds([]);
+    resetCnState();
     setDialogOpen(true);
   };
 
@@ -127,15 +167,44 @@ const Tenants = () => {
       registerNumber: r.registerNumber,
     });
     setSelectedPropertyIds(r.propertyIds);
+
+    // Гэрээний дугаарыг задлах
+    const parsed = parseContractNumber(r.contractNumber);
+    setUseStructured(true);
+    setCnYear(parsed.year);
+    setCnSeq(parsed.seq);
+    if (CONTRACT_PREFIXES.includes(parsed.prefix)) {
+      setCnPrefix(parsed.prefix);
+      setCnPrefixIsCustom(false);
+    } else {
+      setCnPrefix(parsed.prefix);
+      setCnPrefixIsCustom(true);
+    }
+
     setDialogOpen(true);
   };
 
   const handleSubmit = async () => {
-    if (!form.contractNumber || !form.firstName) {
-      toast({ title: "Алдаа", description: "Заавал бөглөх талбаруудыг бөглөнө үү", variant: "destructive" });
+    const finalContractNumber = useStructured
+      ? structuredContractNumber
+      : form.contractNumber;
+
+    if (!finalContractNumber || !form.firstName) {
+      toast({
+        title: "Алдаа",
+        description: "Гэрээний дугаар болон нэрийг заавал бөглөнө үү",
+        variant: "destructive",
+      });
       return;
     }
-    const data = { ...form, propertyIds: selectedPropertyIds, status: "active" as const };
+
+    const data = {
+      ...form,
+      contractNumber: finalContractNumber,
+      propertyIds: selectedPropertyIds,
+      status: "active" as const,
+    };
+
     try {
       if (editingId) {
         await tenantsApi.update(editingId, data);
@@ -270,11 +339,109 @@ const Tenants = () => {
             <DialogTitle>{editingId ? "Түрээслэгч засварлах" : "Түрээслэгч шинээр бүртгэх"}</DialogTitle>
             <DialogDescription>Бүх шаардлагатай мэдээллийг бөглөнө үү</DialogDescription>
           </DialogHeader>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
-            <div className="space-y-2">
-              <Label>Гэрээний дугаар *</Label>
-              <Input placeholder="GR-2024-006" value={form.contractNumber} onChange={(e) => updateField("contractNumber", e.target.value)} />
+
+            {/* ── Гэрээний дугаар ── */}
+            <div className="space-y-2 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <Label>Гэрээний дугаар *</Label>
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
+                  onClick={() => setUseStructured(!useStructured)}
+                >
+                  {useStructured ? "Шууд бичих" : "Бүтэцтэй оруулах"}
+                </button>
+              </div>
+
+              {useStructured ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    {/* Угтвар */}
+                    <div className="flex-1">
+                      {cnPrefixIsCustom ? (
+                        <div className="flex gap-1">
+                          <Input
+                            placeholder="DIG-R"
+                            value={cnPrefix}
+                            onChange={(e) => setCnPrefix(e.target.value.toUpperCase())}
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs px-2"
+                            onClick={() => { setCnPrefixIsCustom(false); setCnPrefix(CONTRACT_PREFIXES[0]); }}
+                          >
+                            ↩
+                          </Button>
+                        </div>
+                      ) : (
+                        <Select
+                          value={cnPrefix}
+                          onValueChange={(v) => {
+                            if (v === "__custom__") { setCnPrefixIsCustom(true); setCnPrefix(""); }
+                            else setCnPrefix(v);
+                          }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Угтвар сонгох" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CONTRACT_PREFIXES.map((p) => (
+                              <SelectItem key={p} value={p}>{p}</SelectItem>
+                            ))}
+                            <SelectItem value="__custom__">Бусад (өөрөө бичих)...</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+
+                    <span className="text-muted-foreground font-bold">–</span>
+
+                    {/* Он */}
+                    <Input
+                      className="w-20 text-center"
+                      placeholder="2025"
+                      value={cnYear}
+                      maxLength={4}
+                      onChange={(e) => setCnYear(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                    />
+
+                    <span className="text-muted-foreground font-bold">–</span>
+
+                    {/* Дугаар */}
+                    <Input
+                      className="w-16 text-center"
+                      placeholder="01"
+                      value={cnSeq}
+                      maxLength={3}
+                      onChange={(e) => setCnSeq(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                    />
+                  </div>
+
+                  {/* Урьдчилан харах */}
+                  {structuredContractNumber ? (
+                    <p className="text-sm font-mono bg-muted px-3 py-1.5 rounded-md text-foreground">
+                      {structuredContractNumber}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Угтвар · Он · Дугаар гурвыг бөглөхөд бүтэн дугаар гарна
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <Input
+                  placeholder="DIG-R-2025-04"
+                  value={form.contractNumber}
+                  onChange={(e) => updateField("contractNumber", e.target.value)}
+                />
+              )}
             </div>
+
+            {/* ── Бусад талбарууд ── */}
             <div className="space-y-2">
               <Label>Овог</Label>
               <Input placeholder="Овог" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} />
@@ -301,7 +468,7 @@ const Tenants = () => {
             </div>
           </div>
 
-          {/* Property multi-select */}
+          {/* Хөрөнгө сонгох */}
           <div className="space-y-3">
             <Label className="text-sm font-medium">Хөрөнгө сонгох (олон сонголт)</Label>
             <div className="relative">

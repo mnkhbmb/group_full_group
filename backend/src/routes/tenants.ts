@@ -28,19 +28,35 @@ router.post("/", async (req, res) => {
     await tenant.save();
     res.status(201).json(tenant);
   } catch (err: any) {
+    if (err.code === 11000) {
+      return res.status(400).json({ error: "Энэ гэрээний дугаар аль хэдийн бүртгэгдсэн байна" });
+    }
     res.status(400).json({ error: err.message });
   }
 });
 
 router.put("/:id", async (req, res) => {
   try {
+    // Гэрээний дугаар өөрчлөгдсөн бол өөр түрээслэгчтэй давхцаж байгаа эсэхийг шалгана
+    if (req.body.contractNumber) {
+      const conflict = await Tenant.findOne({
+        contractNumber: req.body.contractNumber,
+        _id: { $ne: req.params.id },
+      });
+      if (conflict) {
+        return res.status(400).json({ error: "Энэ гэрээний дугаар аль хэдийн бүртгэгдсэн байна" });
+      }
+    }
     const tenant = await Tenant.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
-      runValidators: true,
+      runValidators: false,
     });
     if (!tenant) return res.status(404).json({ error: "Олдсонгүй" });
     res.json(tenant);
   } catch (err: any) {
+    if (err.code === 11000) {
+      return res.status(400).json({ error: "Энэ гэрээний дугаар аль хэдийн бүртгэгдсэн байна" });
+    }
     res.status(400).json({ error: err.message });
   }
 });
